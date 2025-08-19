@@ -2,7 +2,7 @@
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Plus } from "lucide-react";
-import { Objective } from "@/types/strategy";
+import { Objective } from "@/types/objective";
 import { ObjectivesTable } from "./ObjectivesTable";
 import { ObjectivesFilter } from "./ObjectivesFilter";
 

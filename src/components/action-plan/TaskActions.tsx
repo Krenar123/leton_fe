@@ -8,7 +8,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Task } from "@/types/strategy";
+import { Task } from "@/types/task";
 
 interface TaskActionsProps {
   task: Task;
@@ -31,8 +31,8 @@ export const TaskActions = ({ task, onEdit, onDelete, onStatusToggle }: TaskActi
           Edit
         </DropdownMenuItem>
         <DropdownMenuSeparator />
-        <DropdownMenuItem onClick={() => onStatusToggle(task.id)} className="cursor-pointer">
-          {task.status === 'Finished' ? (
+        <DropdownMenuItem onClick={() => onStatusToggle(task.ref)} className="cursor-pointer">
+          {task.status === 'completed' ? (
             <>
               <RotateCcw className="w-4 h-4 mr-2" />
               Mark as Unfinished
@@ -46,7 +46,7 @@ export const TaskActions = ({ task, onEdit, onDelete, onStatusToggle }: TaskActi
         </DropdownMenuItem>
         <DropdownMenuSeparator />
         <DropdownMenuItem 
-          onClick={() => onDelete(task.id)} 
+          onClick={() => onDelete(task.ref)} 
           className="cursor-pointer text-red-600 hover:text-red-700"
         >
           <Trash2 className="w-4 h-4 mr-2" />

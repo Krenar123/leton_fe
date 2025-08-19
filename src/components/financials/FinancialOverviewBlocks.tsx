@@ -15,14 +15,19 @@ export const FinancialOverviewBlocks = ({
   const calculateTotals = () => {
     return estimatesActualsData.reduce(
       (acc, item) => {
-        acc.estimatedCost += item.estimatedCost;
-        acc.actualCost += item.actualCost || 0;
-        acc.estimatedRevenue += item.estimatedRevenue;
-        acc.actualRevenue += item.actualRevenue || 0;
-        acc.invoiced += item.invoiced;
-        acc.paid += item.paid;
-        acc.billed += item.billed;
-        acc.payments += item.payments;
+        if (!item.isCategory) {
+          const estimated = item.estimatedRevenue || 0;
+          const actual = item.actualRevenue ?? estimated;
+  
+          acc.estimatedCost += item.estimatedCost || 0;
+          acc.actualCost += item.actualCost || 0;
+          acc.estimatedRevenue += estimated;
+          acc.actualRevenue += actual;
+          acc.invoiced += item.invoiced || 0;
+          acc.paid += item.paid || 0;
+          acc.billed += item.billed || 0;
+          acc.payments += item.payments || 0;
+        }
         return acc;
       },
       {
@@ -37,6 +42,7 @@ export const FinancialOverviewBlocks = ({
       }
     );
   };
+  
 
   const totals = calculateTotals();
 
@@ -50,8 +56,8 @@ export const FinancialOverviewBlocks = ({
       id: 'contract-amounts' as ViewMode,
       title: 'Contract Amounts',
       items: [
-        { label: 'Original', value: totals.estimatedRevenue },
-        { label: 'Revised', value: totals.actualRevenue }
+        { label: 'Original', value: totals.estimatedCost },
+        { label: 'Revised', value: totals.estimatedRevenue }
       ],
       type: 'contract'
     },

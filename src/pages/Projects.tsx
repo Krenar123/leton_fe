@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useEffect, useState } from "react";
 import { Card } from "@/components/ui/card";
 import ProjectOverview from "@/components/projects/ProjectOverview";
 import ProjectFilters from "@/components/projects/ProjectFilters";
@@ -6,8 +6,12 @@ import ProjectTable from "@/components/projects/ProjectTable";
 import NewProjectDialog from "@/components/projects/NewProjectDialog";
 import { Dialog } from "@/components/ui/dialog";
 import { useLocation } from "react-router-dom";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { fetchAllProjects } from "@/services/api";
+
 interface Project {
   id: number;
+  ref: string;
   name: string;
   client: string;
   location: string;
@@ -15,54 +19,10 @@ interface Project {
   due: string;
   value: number;
   profitability: number;
-  status: "Active" | "Completed";
+  status: "active" | "completed";
   description?: string;
 }
-const mockProjects: Project[] = [{
-  id: 1,
-  name: "Office Building Renovation",
-  client: "ABC Corp",
-  location: "New York, NY",
-  start: "2025-07-15",
-  due: "2025-12-30",
-  value: 250000,
-  profitability: 15.5,
-  status: "Active",
-  description: "Complete renovation of office building"
-}, {
-  id: 2,
-  name: "Residential Complex",
-  client: "XYZ Holdings",
-  location: "Los Angeles, CA",
-  start: "2025-08-01",
-  due: "2026-06-15",
-  value: 1200000,
-  profitability: 22.3,
-  status: "Active",
-  description: "New residential complex construction"
-}, {
-  id: 3,
-  name: "Mall Expansion",
-  client: "Retail Partners",
-  location: "Chicago, IL",
-  start: "2025-02-10",
-  due: "2025-07-20",
-  value: 800000,
-  profitability: 18.7,
-  status: "Completed",
-  description: "Shopping mall expansion project"
-}, {
-  id: 4,
-  name: "Hospital Wing",
-  client: "Health Systems Inc",
-  location: "Miami, FL",
-  start: "2025-09-01",
-  due: "2026-04-30",
-  value: 950000,
-  profitability: 12.8,
-  status: "Active",
-  description: "Hospital wing construction"
-}];
+
 interface FilterState {
   client: string;
   location: string;
@@ -78,6 +38,7 @@ interface FilterState {
   };
   status: string;
 }
+
 interface ColumnVisibility {
   client: boolean;
   location: boolean;
@@ -86,8 +47,11 @@ interface ColumnVisibility {
   value: boolean;
   profit: boolean;
 }
+
 const Projects = () => {
-  const [projects, setProjects] = useState<Project[]>(mockProjects);
+  const queryClient = useQueryClient();
+  const location = useLocation();
+  const [isNewProjectOpen, setIsNewProjectOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState<"all" | "active" | "completed">("all");
   const [filters, setFilters] = useState<FilterState>({
@@ -95,14 +59,8 @@ const Projects = () => {
     location: "",
     start: "",
     due: "",
-    value: {
-      min: "",
-      max: ""
-    },
-    profit: {
-      min: "",
-      max: ""
-    },
+    value: { min: "", max: "" },
+    profit: { min: "", max: "" },
     status: ""
   });
   const [columnVisibility, setColumnVisibility] = useState<ColumnVisibility>({
@@ -113,92 +71,140 @@ const Projects = () => {
     value: true,
     profit: true
   });
-  const [isNewProjectOpen, setIsNewProjectOpen] = useState(false);
-  const location = useLocation();
+
   useEffect(() => {
     if (location.state?.openNewProject) {
       setIsNewProjectOpen(true);
-      // Clear the state to avoid reopening on future visits
       window.history.replaceState({}, document.title);
     }
   }, [location.state]);
-  const activeProjects = projects.filter(p => p.status === "Active");
-  const completedProjects = projects.filter(p => p.status === "Completed");
-  const hasActiveFilters = Object.values(filters).some(filter => typeof filter === 'string' ? filter !== '' : filter.min !== '' || filter.max !== '');
+
+  const { data, isLoading } = useQuery({
+    queryKey: ["projects"],
+    queryFn: fetchAllProjects
+  });
+
+  const projects: Project[] = Array.isArray(data?.data)
+    ? data.data.map((entry: any) => entry.attributes)
+    : [];
+
+  const activeProjects = projects.filter(p => p.status === "active");
+  const completedProjects = projects.filter(p => p.status === "completed");
+
+  const hasActiveFilters = Object.values(filters).some(filter =>
+    typeof filter === "string"
+      ? filter !== ""
+      : filter.min !== "" || filter.max !== ""
+  );
+
   const getFilteredProjects = () => {
     let filtered = projects;
 
-    // Status filter from tabs
     if (statusFilter === "active") {
-      filtered = filtered.filter(p => p.status === "Active");
+      filtered = filtered.filter(p => p.status === "active");
     } else if (statusFilter === "completed") {
-      filtered = filtered.filter(p => p.status === "Completed");
+      filtered = filtered.filter(p => p.status === "completed");
     }
 
-    // Search filter
     if (searchTerm) {
-      filtered = filtered.filter(project => project.name.toLowerCase().includes(searchTerm.toLowerCase()) || project.client.toLowerCase().includes(searchTerm.toLowerCase()));
+      filtered = filtered.filter(project =>
+        project.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        project.client.toLowerCase().includes(searchTerm.toLowerCase())
+      );
     }
 
-    // Additional filters
     if (filters.client) {
-      filtered = filtered.filter(p => p.client.toLowerCase().includes(filters.client.toLowerCase()));
+      filtered = filtered.filter(p =>
+        p.client.toLowerCase().includes(filters.client.toLowerCase())
+      );
     }
+
     if (filters.location) {
-      filtered = filtered.filter(p => p.location.toLowerCase().includes(filters.location.toLowerCase()));
+      filtered = filtered.filter(p =>
+        p.location.toLowerCase().includes(filters.location.toLowerCase())
+      );
     }
+
     if (filters.value.min) {
-      filtered = filtered.filter(p => p.value >= parseInt(filters.value.min));
+      filtered = filtered.filter(p => p.value >= parseFloat(filters.value.min));
     }
+
     if (filters.value.max) {
-      filtered = filtered.filter(p => p.value <= parseInt(filters.value.max));
+      filtered = filtered.filter(p => p.value <= parseFloat(filters.value.max));
     }
+
     if (filters.profit.min) {
       filtered = filtered.filter(p => p.profitability >= parseFloat(filters.profit.min));
     }
+
     if (filters.profit.max) {
       filtered = filtered.filter(p => p.profitability <= parseFloat(filters.profit.max));
     }
+
     return filtered;
   };
+
   const filteredProjects = getFilteredProjects();
+
   const handleProjectCreate = (project: Project) => {
-    setProjects([...projects, project]);
+    // Placeholder – add API call later
+    console.log("New project created:", project);
+
+    // Force React Query to refetch the projects list
+    queryClient.invalidateQueries({ queryKey: ["projects"] });
   };
+
   const clearFilters = () => {
     setFilters({
       client: "",
       location: "",
       start: "",
       due: "",
-      value: {
-        min: "",
-        max: ""
-      },
-      profit: {
-        min: "",
-        max: ""
-      },
+      value: { min: "", max: "" },
+      profit: { min: "", max: "" },
       status: ""
     });
   };
-  return <div className="space-y-6 px-[16px] py-[16px]">
-      {/* Project Overview Cards */}
-      <ProjectOverview totalProjects={projects.length} activeProjects={activeProjects.length} completedProjects={completedProjects.length} statusFilter={statusFilter} onStatusChange={setStatusFilter} />
 
-      {/* Project List */}
+  return (
+    <div className="space-y-6 px-[16px] py-[16px]">
+      <ProjectOverview
+        totalProjects={projects.length}
+        activeProjects={activeProjects.length}
+        completedProjects={completedProjects.length}
+        statusFilter={statusFilter}
+        onStatusChange={setStatusFilter}
+      />
+
       <Card className="p-6 px-[16px] py-[16px]">
-        {/* Search and Controls */}
-        <ProjectFilters searchTerm={searchTerm} onSearchChange={setSearchTerm} filters={filters} onFiltersChange={setFilters} columnVisibility={columnVisibility} onColumnVisibilityChange={setColumnVisibility} hasActiveFilters={hasActiveFilters} onClearFilters={clearFilters} onNewProject={() => setIsNewProjectOpen(true)} newProjectDialog={null} />
+        <ProjectFilters
+          searchTerm={searchTerm}
+          onSearchChange={setSearchTerm}
+          filters={filters}
+          onFiltersChange={setFilters}
+          columnVisibility={columnVisibility}
+          onColumnVisibilityChange={setColumnVisibility}
+          hasActiveFilters={hasActiveFilters}
+          onClearFilters={clearFilters}
+          onNewProject={() => setIsNewProjectOpen(true)}
+          newProjectDialog={null}
+        />
 
-        {/* Projects Table */}
-        <ProjectTable projects={filteredProjects} columnVisibility={columnVisibility} />
+        <ProjectTable
+          projects={filteredProjects}
+          columnVisibility={columnVisibility}
+        />
       </Card>
 
-      {/* New Project Dialog */}
       <Dialog open={isNewProjectOpen} onOpenChange={setIsNewProjectOpen}>
-        <NewProjectDialog projects={projects} onProjectCreate={handleProjectCreate} onClose={() => setIsNewProjectOpen(false)} />
+        <NewProjectDialog
+          projects={projects}
+          onProjectCreate={handleProjectCreate}
+          onClose={() => setIsNewProjectOpen(false)}
+        />
       </Dialog>
-    </div>;
+    </div>
+  );
 };
+
 export default Projects;

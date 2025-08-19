@@ -13,7 +13,7 @@ import { useNavigate } from "react-router-dom";
 
 interface ItemLineActionsProps {
   item: EstimateActualItem;
-  onStatusChange: (itemLine: string, status: 'not-started' | 'in-progress' | 'completed' | 'on-hold') => void;
+  onStatusChange: (itemLine: string, status: 'not_started' | 'in_progress' | 'completed' | 'on-hold') => void;
   onEdit: (item: EstimateActualItem) => void;
   onDelete: (itemLine: string) => void;
 }
@@ -27,18 +27,18 @@ export const ItemLineActions = ({ item, onStatusChange, onEdit, onDelete }: Item
 
   const getNextStatus = (currentStatus: string) => {
     switch (currentStatus) {
-      case 'not-started': return 'in-progress';
-      case 'in-progress': return 'completed';
-      case 'completed': return 'not-started';
-      case 'on-hold': return 'in-progress';
-      default: return 'in-progress';
+      case 'not_started': return 'in_progress';
+      case 'in_progress': return 'completed';
+      case 'completed': return 'not_started';
+      case 'on-hold': return 'in_progress';
+      default: return 'in_progress';
     }
   };
 
   const getStatusLabel = (currentStatus: string) => {
     switch (currentStatus) {
-      case 'not-started': return 'Mark as In Progress';
-      case 'in-progress': return 'Mark as Completed';
+      case 'not_started': return 'Mark as In Progress';
+      case 'in_progress': return 'Mark as Completed';
       case 'completed': return 'Mark as Not Started';
       case 'on-hold': return 'Mark as In Progress';
       default: return 'Change Status';

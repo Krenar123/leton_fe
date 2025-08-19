@@ -41,12 +41,12 @@ export const FinancialTableBody = ({
 
   const getStatusBadge = (status: string) => {
     const statusConfig = {
-      'not-started': { 
+      'not_started': { 
         label: 'Not Started', 
         icon: Clock, 
         className: 'bg-gray-100 text-gray-700 border-gray-200' 
       },
-      'in-progress': { 
+      'in_progress': { 
         label: 'In Progress', 
         icon: Clock, 
         className: 'bg-blue-100 text-blue-700 border-blue-200' 
@@ -63,7 +63,7 @@ export const FinancialTableBody = ({
       }
     };
     
-    const config = statusConfig[status as keyof typeof statusConfig] || statusConfig['not-started'];
+    const config = statusConfig[status as keyof typeof statusConfig] || statusConfig['not_started'];
     const Icon = config.icon;
     
     return (

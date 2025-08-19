@@ -1,45 +1,49 @@
-
 import { useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Task } from "@/types/strategy";
+import { Task } from "@/types/task";
 import { calculateStatusFromDates } from "@/utils/statusCalculator";
 
 interface AddTaskDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onAdd: (task: Omit<Task, 'id'>) => void;
-  objectiveId: string;
+  onAdd: (task: Omit<Task, "id">) => void;
+  objectiveRef: string;
 }
 
-export const AddTaskDialog = ({ open, onOpenChange, onAdd, objectiveId }: AddTaskDialogProps) => {
-  const [task, setTask] = useState("");
+export const AddTaskDialog = ({
+  open,
+  onOpenChange,
+  onAdd,
+  objectiveRef
+}: AddTaskDialogProps) => {
+  const [title, setTask] = useState("");
   const [description, setDescription] = useState("");
-  const [start, setStart] = useState("");
-  const [due, setDue] = useState("");
+  const [start_date, setStart] = useState("");
+  const [due_date, setDue] = useState("");
   const [participants, setParticipants] = useState("");
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    
-    if (!task || !start || !due) return;
+
+    if (!title || !start_date || !due_date) return;
 
     const participantsList = participants
-      .split(',')
-      .map(p => p.trim())
-      .filter(p => p.length > 0);
+      .split(",")
+      .map((p) => p.trim())
+      .filter((p) => p.length > 0);
 
-    const status = calculateStatusFromDates(start, due);
+    const status = calculateStatusFromDates(start_date, due_date); // Optional if backend handles status
 
     onAdd({
-      objectiveId,
-      task,
+      objectiveRef,
+      title,
       description: description || undefined,
-      start,
-      due,
+      start_date,
+      due_date,
       participants: participantsList,
       status
     });
@@ -61,10 +65,10 @@ export const AddTaskDialog = ({ open, onOpenChange, onAdd, objectiveId }: AddTas
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <Label htmlFor="task">Task Name *</Label>
+            <Label htmlFor="title">Task Name *</Label>
             <Input
-              id="task"
-              value={task}
+              id="title"
+              value={title}
               onChange={(e) => setTask(e.target.value)}
               placeholder="e.g., Design wireframes"
               required
@@ -84,21 +88,21 @@ export const AddTaskDialog = ({ open, onOpenChange, onAdd, objectiveId }: AddTas
 
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <Label htmlFor="start">Start Date *</Label>
+              <Label htmlFor="start_date">Start Date *</Label>
               <Input
-                id="start"
+                id="start_date"
                 type="date"
-                value={start}
+                value={start_date}
                 onChange={(e) => setStart(e.target.value)}
                 required
               />
             </div>
             <div>
-              <Label htmlFor="due">Due Date *</Label>
+              <Label htmlFor="due_date">Due Date *</Label>
               <Input
-                id="due"
+                id="due_date"
                 type="date"
-                value={due}
+                value={due_date}
                 onChange={(e) => setDue(e.target.value)}
                 required
               />

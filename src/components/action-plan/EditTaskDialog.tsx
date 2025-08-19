@@ -1,11 +1,10 @@
-
 import { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Task } from "@/types/strategy";
+import { Task } from "@/types/task";
 
 interface EditTaskDialogProps {
   open: boolean;
@@ -15,38 +14,39 @@ interface EditTaskDialogProps {
 }
 
 export const EditTaskDialog = ({ open, onOpenChange, onSave, task }: EditTaskDialogProps) => {
-  const [taskName, setTaskName] = useState("");
+  const [titleName, setTitleName] = useState("");
   const [description, setDescription] = useState("");
-  const [start, setStart] = useState("");
-  const [due, setDue] = useState("");
+  const [start_date, setStart] = useState("");
+  const [due_date, setDue] = useState("");
   const [participants, setParticipants] = useState("");
 
   useEffect(() => {
+    console.log(task);
     if (task) {
-      setTaskName(task.task);
+      setTitleName(task.title);
       setDescription(task.description || "");
-      setStart(task.start);
-      setDue(task.due);
+      setStart(task.start_date);
+      setDue(task.due_date);
       setParticipants(task.participants.join(", "));
     }
   }, [task]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    
-    if (!task || !taskName || !start || !due) return;
+
+    if (!task || !titleName || !start_date || !due_date) return;
 
     const participantsList = participants
-      .split(',')
-      .map(p => p.trim())
-      .filter(p => p.length > 0);
+      .split(",")
+      .map((p) => p.trim())
+      .filter((p) => p.length > 0);
 
     onSave({
       ...task,
-      task: taskName,
+      title: titleName,
       description: description || undefined,
-      start,
-      due,
+      start_date,
+      due_date,
       participants: participantsList,
     });
 
@@ -61,11 +61,11 @@ export const EditTaskDialog = ({ open, onOpenChange, onSave, task }: EditTaskDia
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <Label htmlFor="task">Task Name *</Label>
+            <Label htmlFor="title">Task Name *</Label>
             <Input
-              id="task"
-              value={taskName}
-              onChange={(e) => setTaskName(e.target.value)}
+              id="title"
+              value={titleName}
+              onChange={(e) => setTitleName(e.target.value)}
               placeholder="e.g., Design wireframes"
               required
             />
@@ -84,21 +84,21 @@ export const EditTaskDialog = ({ open, onOpenChange, onSave, task }: EditTaskDia
 
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <Label htmlFor="start">Start Date *</Label>
+              <Label htmlFor="start_date">Start Date *</Label>
               <Input
-                id="start"
+                id="start_date"
                 type="date"
-                value={start}
+                value={start_date}
                 onChange={(e) => setStart(e.target.value)}
                 required
               />
             </div>
             <div>
-              <Label htmlFor="due">Due Date *</Label>
+              <Label htmlFor="due_date">Due Date *</Label>
               <Input
-                id="due"
+                id="due_date"
                 type="date"
-                value={due}
+                value={due_date}
                 onChange={(e) => setDue(e.target.value)}
                 required
               />

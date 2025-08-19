@@ -17,7 +17,7 @@ interface ItemLineDialogProps {
     startDate?: string;
     dueDate?: string;
     dependsOn?: string;
-    status: 'not-started' | 'in-progress' | 'completed' | 'on-hold';
+    status: 'not_started' | 'in_progress' | 'completed' | 'on_hold';
   }) => void;
   existingItemLines?: EstimateActualItem[];
   editingItem?: EstimateActualItem;
@@ -41,7 +41,7 @@ export interface DialogState {
     startDate?: Date;
     dueDate?: Date;
     dependsOn: string;
-    status: 'not-started' | 'in-progress' | 'completed' | 'on-hold';
+    status: 'not_started' | 'in_progress' | 'completed' | 'on_hold';
   };
 }
 
@@ -65,7 +65,7 @@ export const ItemLineDialog = ({
       startDate: editingItem?.startDate ? new Date(editingItem.startDate) : undefined,
       dueDate: editingItem?.dueDate ? new Date(editingItem.dueDate) : undefined,
       dependsOn: editingItem?.dependsOn || "none",
-      status: editingItem?.status || 'not-started',
+      status: editingItem?.status || 'not_started',
     }
   });
 
@@ -83,7 +83,7 @@ export const ItemLineDialog = ({
         startDate: undefined,
         dueDate: undefined,
         dependsOn: "none",
-        status: 'not-started',
+        status: 'not_started',
       }
     });
   };

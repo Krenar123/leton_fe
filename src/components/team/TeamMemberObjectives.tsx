@@ -3,7 +3,7 @@ import { useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { ListHeader } from "@/components/common/ListHeader";
 import { ObjectivesTable } from "@/components/action-plan/ObjectivesTable";
-import { Objective } from "@/types/strategy";
+import { Objective } from "@/types/objective";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 

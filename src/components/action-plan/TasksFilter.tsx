@@ -9,14 +9,14 @@ import { Filter, X } from "lucide-react";
 
 interface TasksFilterProps {
   onFilterChange: (filters: {
-    task?: string;
+    title?: string;
     status?: string;
     participant?: string;
   }) => void;
 }
 
 export const TasksFilter = ({ onFilterChange }: TasksFilterProps) => {
-  const [task, setTask] = useState("");
+  const [title, setTitle] = useState("");
   const [status, setStatus] = useState("");
   const [participant, setParticipant] = useState("");
   const [isOpen, setIsOpen] = useState(false);
@@ -24,7 +24,7 @@ export const TasksFilter = ({ onFilterChange }: TasksFilterProps) => {
   const handleApplyFilters = (e?: React.FormEvent) => {
     if (e) e.preventDefault();
     onFilterChange({
-      task: task || undefined,
+      title: title || undefined,
       status: status || undefined,
       participant: participant || undefined,
     });
@@ -33,13 +33,13 @@ export const TasksFilter = ({ onFilterChange }: TasksFilterProps) => {
 
   const handleClearFilters = (e?: React.FormEvent) => {
     if (e) e.preventDefault();
-    setTask("");
+    setTitle("");
     setStatus("");
     setParticipant("");
     onFilterChange({});
   };
 
-  const hasActiveFilters = task || status || participant;
+  const hasActiveFilters = title || status || participant;
 
   return (
     <Popover open={isOpen} onOpenChange={setIsOpen}>
@@ -65,11 +65,11 @@ export const TasksFilter = ({ onFilterChange }: TasksFilterProps) => {
           </div>
 
           <div>
-            <Label htmlFor="task-filter" className="text-gray-700">Task</Label>
+            <Label htmlFor="title-filter" className="text-gray-700">Task</Label>
             <Input
-              id="task-filter"
-              value={task}
-              onChange={(e) => setTask(e.target.value)}
+              id="title-filter"
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
               placeholder="Search by task..."
               className="mt-1"
             />

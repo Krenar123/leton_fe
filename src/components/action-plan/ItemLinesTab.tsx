@@ -40,7 +40,7 @@ export const ItemLinesTab = ({ project }: ItemLinesTabProps) => {
     return 'Planned';
   };
 
-  const handleStatusChange = (itemLine: string, status: 'not-started' | 'in-progress' | 'completed' | 'on-hold') => {
+  const handleStatusChange = (itemLine: string, status: 'not_started' | 'in_progress' | 'completed' | 'on_hold') => {
     handleItemLineAction(itemLine, status === 'completed' ? 'complete' : 'edit');
   };
 
@@ -58,16 +58,14 @@ export const ItemLinesTab = ({ project }: ItemLinesTabProps) => {
   };
 
   // Filter item lines based on search and status
-  const filteredItems = estimatesActualsData.filter(item => {
-    const matchesSearch = item.itemLine.toLowerCase().includes(searchTerm.toLowerCase());
-    
-    if (statusFilter === "all") {
-      return matchesSearch;
-    }
-    
-    const itemStatus = mapFinancialToActionStatus(item.status, item.startDate, item.dueDate);
-    return matchesSearch && itemStatus === statusFilter;
-  });
+  const filteredItems = Array.isArray(estimatesActualsData)
+  ? estimatesActualsData.filter(item => {
+      const matchesSearch = item.itemLine.toLowerCase().includes(searchTerm.toLowerCase());
+      if (statusFilter === "all") return matchesSearch;
+      const itemStatus = mapFinancialToActionStatus(item.status, item.startDate, item.dueDate);
+      return matchesSearch && itemStatus === statusFilter;
+    })
+  : [];
 
   const statusOptions = [
     { value: "all", label: "All Status" },

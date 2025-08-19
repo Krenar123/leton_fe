@@ -15,7 +15,7 @@ interface FinancialsDialogsProps {
     startDate?: string;
     dueDate?: string;
     dependsOn?: string;
-    status: 'not-started' | 'in-progress' | 'completed' | 'on-hold';
+    status: 'not_started' | 'in_progress' | 'completed' | 'on-hold';
   }) => void;
   existingItemLines: EstimateActualItem[];
   editingItem?: EstimateActualItem;

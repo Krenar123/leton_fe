@@ -1,30 +1,29 @@
-
 import { useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { EstimateActualItem } from "@/types/financials";
-import { ActionSelectionStep } from "./ActionSelectionStep";
-import { LocationSelectionStep } from "./LocationSelectionStep";
-import { FormStep } from "./FormStep";
+import { ActionSelectionStep } from "./dialog-steps/ActionSelectionStep";
+import { LocationSelectionStep } from "./dialog-steps/LocationSelectionStep";
+import { FormStep } from "./dialog-steps/FormStep";
 
 interface ItemLineDialogProps {
   isOpen: boolean;
   onClose: () => void;
   onSave: (itemLine: {
-    itemLine: string;
+    item_line: string;
     contractor?: string;
-    estimatedCost: number;
-    estimatedRevenue: number;
-    startDate?: string;
-    dueDate?: string;
-    dependsOn?: string;
-    status: 'not-started' | 'in-progress' | 'completed' | 'on-hold';
-    actionType?: ActionType;
+    estimated_cost: number;
+    estimated_revenue: number;
+    start_date?: string;
+    due_date?: string;
+    depends_on?: string;
+    status: 'not_started' | 'in_progress' | 'completed' | 'on_hold';
+    actionType?: string;
     selectedLevel1?: string;
     selectedLevel2?: string;
     selectedLevel3?: string;
     unit?: string;
     quantity?: number;
-    unitPrice?: number;
+    unit_price?: number;
   }) => void;
   existingItemLines?: EstimateActualItem[];
   editingItem?: EstimateActualItem;
@@ -44,11 +43,11 @@ export interface DialogState {
     unit: string;
     quantity: string;
     pricePerUnit: string;
-    estimatedRevenue: string;
-    startDate?: Date;
-    dueDate?: Date;
-    dependsOn: string;
-    status: 'not-started' | 'in-progress' | 'completed' | 'on-hold';
+    estimated_revenue: string;
+    start_date?: Date;
+    due_date?: Date;
+    depends_on: string;
+    status: 'not_started' | 'in_progress' | 'completed' | 'on_hold';
   };
 }
 
@@ -68,11 +67,11 @@ export const ItemLineDialog = ({
       unit: editingItem?.unit || "",
       quantity: editingItem?.quantity?.toString() || "",
       pricePerUnit: editingItem?.unitPrice?.toString() || "",
-      estimatedRevenue: editingItem?.estimatedRevenue?.toString() || "",
-      startDate: editingItem?.startDate ? new Date(editingItem.startDate) : undefined,
-      dueDate: editingItem?.dueDate ? new Date(editingItem.dueDate) : undefined,
-      dependsOn: editingItem?.dependsOn || "none",
-      status: editingItem?.status || 'not-started',
+      estimated_revenue: editingItem?.estimatedRevenue?.toString() || "",
+      start_date: editingItem?.startDate ? new Date(editingItem.startDate) : undefined,
+      due_date: editingItem?.dueDate ? new Date(editingItem.dueDate) : undefined,
+      depends_on: editingItem?.dependsOn || "none",
+      status: editingItem?.status || 'not_started',
     }
   });
 
@@ -86,11 +85,11 @@ export const ItemLineDialog = ({
         unit: "",
         quantity: "",
         pricePerUnit: "",
-        estimatedRevenue: "",
-        startDate: undefined,
-        dueDate: undefined,
-        dependsOn: "none",
-        status: 'not-started',
+        estimated_revenue: "",
+        start_date: undefined,
+        due_date: undefined,
+        depends_on: "none",
+        status: 'not_started',
       }
     });
   };
@@ -102,8 +101,7 @@ export const ItemLineDialog = ({
 
   const handleActionSelect = (actionType: ActionType) => {
     setDialogState(prev => ({ ...prev, actionType }));
-    
-    // Skip location step for main category
+
     if (actionType === 'add-main-category') {
       setCurrentStep('form');
     } else {
@@ -131,7 +129,7 @@ export const ItemLineDialog = ({
 
   const getDialogTitle = () => {
     if (editingItem) return 'Edit Item Line';
-    
+
     switch (currentStep) {
       case 'action':
         return 'What would you like to add?';
@@ -155,24 +153,23 @@ export const ItemLineDialog = ({
     }
   };
 
-  // Skip steps for editing existing items
   if (editingItem && currentStep !== 'form') {
     setCurrentStep('form');
   }
 
   return (
     <Dialog open={isOpen} onOpenChange={handleClose}>
-      <DialogContent className="sm:max-w-[1200px] max-h-[90vh] overflow-y-auto">
+      <DialogContent className="sm:max-w-[900px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="text-xl font-semibold">
             {getDialogTitle()}
           </DialogTitle>
         </DialogHeader>
-        
+
         {currentStep === 'action' && !editingItem && (
           <ActionSelectionStep onSelect={handleActionSelect} />
         )}
-        
+
         {currentStep === 'location' && (
           <LocationSelectionStep 
             actionType={dialogState.actionType!}
@@ -181,7 +178,7 @@ export const ItemLineDialog = ({
             onBack={handleBack}
           />
         )}
-        
+
         {currentStep === 'form' && (
           <FormStep
             dialogState={dialogState}

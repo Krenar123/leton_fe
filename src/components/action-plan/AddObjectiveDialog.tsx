@@ -5,52 +5,64 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Objective } from "@/types/strategy";
+import { Objective } from "@/types/objective";
 import { calculateStatusFromDates } from "@/utils/statusCalculator";
+import { createObjective } from "@/services/api";
+import { toast } from "@/hooks/use-toast";
+import { mapObjectiveStatusEnum } from "@/utils/mapObjectiveStatusEnum";
 
 interface AddObjectiveDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onAdd: (objective: Omit<Objective, 'id'>) => void;
+  onAdd: (objective: any) => void;
+  projectRef: string;
 }
 
-export const AddObjectiveDialog = ({ open, onOpenChange, onAdd }: AddObjectiveDialogProps) => {
-  const [field, setField] = useState("");
+
+export const AddObjectiveDialog = ({ open, onOpenChange, onAdd, projectRef }: AddObjectiveDialogProps) => {
+  const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
-  const [start, setStart] = useState("");
-  const [due, setDue] = useState("");
+  const [start_date, setStartDate] = useState("");
+  const [end_date, setEndDate] = useState("");
   const [participants, setParticipants] = useState("");
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
-    if (!field || !start || !due) return;
-
+    if (!title || !start_date || !end_date) return;
+  
     const participantsList = participants
-      .split(',')
-      .map(p => p.trim())
-      .filter(p => p.length > 0);
-
-    // Automatically calculate status based on dates
-    const status = calculateStatusFromDates(start, due);
-
-    onAdd({
-      field,
+      .split(",")
+      .map((p) => p.trim())
+      .filter((p) => p.length > 0);
+  
+    const status = 0;
+  
+    const payload = {
+      title,
       description: description || undefined,
-      start,
-      due,
+      start_date: new Date(start_date).toISOString().split("T")[0],
+      end_date: new Date(end_date).toISOString().split("T")[0],
       participants: participantsList,
       status
-    });
-
-    // Reset form
-    setField("");
+    };
+  
+    try {
+      //await createObjective(projectRef, payload);
+      //toast({ title: "Objective created successfully" });
+      onOpenChange(false);
+      onAdd(payload); 
+    } catch (error: any) {
+      console.error("Error creating objective:", error);
+      toast({ title: "Error", description: error.message, variant: "destructive" });
+    }
+  
+    setTitle("");
     setDescription("");
-    setStart("");
-    setDue("");
+    setStartDate("");
+    setEndDate("");
     setParticipants("");
-    onOpenChange(false);
   };
+  
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -60,11 +72,11 @@ export const AddObjectiveDialog = ({ open, onOpenChange, onAdd }: AddObjectiveDi
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <Label htmlFor="field">Objective Field *</Label>
+            <Label htmlFor="title">Objective Field *</Label>
             <Input
-              id="field"
-              value={field}
-              onChange={(e) => setField(e.target.value)}
+              id="title"
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
               placeholder="e.g., Product Development"
               required
             />
@@ -83,22 +95,22 @@ export const AddObjectiveDialog = ({ open, onOpenChange, onAdd }: AddObjectiveDi
 
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <Label htmlFor="start">Start Date *</Label>
+              <Label htmlFor="start_date">Start Date *</Label>
               <Input
-                id="start"
+                id="start_date"
                 type="date"
-                value={start}
-                onChange={(e) => setStart(e.target.value)}
+                value={start_date}
+                onChange={(e) => setStartDate(e.target.value)}
                 required
               />
             </div>
             <div>
-              <Label htmlFor="due">Due Date *</Label>
+              <Label htmlFor="end_date">Due Date *</Label>
               <Input
-                id="due"
+                id="end_date"
                 type="date"
-                value={due}
-                onChange={(e) => setDue(e.target.value)}
+                value={end_date}
+                onChange={(e) => setEndDate(e.target.value)}
                 required
               />
             </div>

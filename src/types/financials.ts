@@ -1,5 +1,6 @@
 
 export interface EstimateActualItem {
+  ref: string;
   itemLine: string;
   contractor?: string; // Added contractor field
   costCode?: string; // Auto-generated cost code (1, 1.1, 1.1.1, etc.)
@@ -17,7 +18,7 @@ export interface EstimateActualItem {
   payments: number;
   startDate?: string;
   dueDate?: string;
-  status: 'not-started' | 'in-progress' | 'completed' | 'on-hold';
+  status: 'not_started' | 'in_progress' | 'completed' | 'on_hold';
   dependsOn?: string; // itemLine name that this depends on
   isCompleted: boolean;
   // Hierarchical structure properties

@@ -1,14 +1,13 @@
-
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Task } from "@/types/strategy";
+import { Task } from "@/types/task";
 import { format } from "date-fns";
 import { ParticipantsDisplay } from "./ParticipantsDisplay";
 import { TaskActions } from "./TaskActions";
 import { StatusIcon } from "./StatusIcon";
 
 interface ColumnVisibility {
-  start: boolean;
-  due: boolean;
+  start_date: boolean;
+  due_date: boolean;
   participants: boolean;
   status: boolean;
 }
@@ -16,28 +15,29 @@ interface ColumnVisibility {
 interface TasksTableProps {
   tasks: Task[];
   onEdit: (task: Task) => void;
-  onDelete: (id: string) => void;
-  onStatusChange: (id: string, status: Task['status']) => void;
+  onDelete: (ref: string) => void;
+  onStatusChange: (ref: string, status: Task['status']) => void;
   columnVisibility?: ColumnVisibility;
 }
 
-export const TasksTable = ({ 
-  tasks, 
-  onEdit, 
-  onDelete, 
+export const TasksTable = ({
+  tasks,
+  onEdit,
+  onDelete,
   onStatusChange,
   columnVisibility = {
-    start: true,
-    due: true,
+    start_date: true,
+    due_date: true,
     participants: true,
     status: true,
   }
 }: TasksTableProps) => {
-  const handleStatusToggle = (taskId: string) => {
-    const task = tasks.find(t => t.id === taskId);
+  const handleStatusToggle = (taskRef: string) => {
+    const task = tasks.find(t => t.ref === taskRef);
     if (task) {
-      const newStatus = task.status === 'Finished' ? 'In Progress' : 'Finished';
-      onStatusChange(taskId, newStatus);
+      const newStatus: Task['status'] =
+        task.status === 'completed' ? 'in_progress' : 'completed';
+      onStatusChange(task.ref, newStatus);
     }
   };
 
@@ -55,19 +55,35 @@ export const TasksTable = ({
         <TableHeader>
           <TableRow className="bg-gray-100">
             <TableHead className="font-semibold text-gray-700">Task</TableHead>
-            {columnVisibility.start && <TableHead className="font-semibold text-gray-700">Start</TableHead>}
-            {columnVisibility.due && <TableHead className="font-semibold text-gray-700">Due</TableHead>}
-            {columnVisibility.participants && <TableHead className="font-semibold text-gray-700">Participants</TableHead>}
-            {columnVisibility.status && <TableHead className="font-semibold text-gray-700">Status</TableHead>}
-            <TableHead className="font-semibold text-gray-700 w-12"></TableHead>
+            {columnVisibility.start_date && (
+              <TableHead className="font-semibold text-gray-700">Start</TableHead>
+            )}
+            {columnVisibility.due_date && (
+              <TableHead className="font-semibold text-gray-700">Due</TableHead>
+            )}
+            {columnVisibility.participants && (
+              <TableHead className="font-semibold text-gray-700">Participants</TableHead>
+            )}
+            {columnVisibility.status && (
+              <TableHead className="font-semibold text-gray-700">Status</TableHead>
+            )}
+            <TableHead className="font-semibold text-gray-700 w-12" />
           </TableRow>
         </TableHeader>
         <TableBody>
           {tasks.map((task) => (
-            <TableRow key={task.id} className="hover:bg-gray-50 transition-colors">
-              <TableCell className="font-medium text-gray-900">{task.task}</TableCell>
-              {columnVisibility.start && <TableCell className="text-gray-700">{format(new Date(task.start), 'dd/MM/yyyy')}</TableCell>}
-              {columnVisibility.due && <TableCell className="text-gray-700">{format(new Date(task.due), 'dd/MM/yyyy')}</TableCell>}
+            <TableRow key={task.ref} className="hover:bg-gray-50 transition-colors">
+              <TableCell className="font-medium text-gray-900">{task.title}</TableCell>
+              {columnVisibility.start_date && (
+                <TableCell className="text-gray-700">
+                  {format(new Date(task.start_date), 'dd/MM/yyyy')}
+                </TableCell>
+              )}
+              {columnVisibility.due_date && (
+                <TableCell className="text-gray-700">
+                  {format(new Date(task.due_date), 'dd/MM/yyyy')}
+                </TableCell>
+              )}
               {columnVisibility.participants && (
                 <TableCell>
                   <ParticipantsDisplay participants={task.participants} />
@@ -79,11 +95,11 @@ export const TasksTable = ({
                 </TableCell>
               )}
               <TableCell>
-                <TaskActions 
+                <TaskActions
                   task={task}
                   onEdit={onEdit}
-                  onDelete={onDelete}
-                  onStatusToggle={handleStatusToggle}
+                  onDelete={() => onDelete(task.ref)}
+                  onStatusToggle={() => handleStatusToggle(task.ref)}
                 />
               </TableCell>
             </TableRow>

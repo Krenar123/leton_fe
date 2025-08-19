@@ -46,12 +46,12 @@ export const FormStep = ({
     if (actionType === 'add-main-category' || actionType === 'add-vendor') return false;
     
     if (actionType === 'add-category' && selectedLevel1) {
-      const parentItem = existingItemLines.find(item => item.costCode === selectedLevel1);
+      const parentItem = existingItemLines.find(item => item.parent_id === selectedLevel1);
       return !!(parentItem?.contractor || parentItem?.vendor);
     }
     
     if (actionType === 'add-item-line' && selectedLevel2) {
-      const parentItem = existingItemLines.find(item => item.costCode === selectedLevel2);
+      const parentItem = existingItemLines.find(item => item.parent_id === selectedLevel2);
       return !!(parentItem?.contractor || parentItem?.vendor);
     }
     
@@ -87,6 +87,19 @@ export const FormStep = ({
   const handleSave = () => {
     if (!formData.description || estimatedCost <= 0 || !formData.estimatedRevenue) return;
     
+    const getParentId = (): string | undefined => {
+      switch (actionType) {
+        case "add-category":
+          return selectedLevel1;
+        case "add-item-line":
+          return selectedLevel2;
+        case "add-vendor":
+          return selectedLevel3;
+        default:
+          return undefined;
+      }
+    }
+
     // Check if vendor is required but missing
     const parentHasVendor = hasParentVendor();
     const isVendorRequired = actionType === 'add-vendor' || !parentHasVendor;
@@ -98,13 +111,13 @@ export const FormStep = ({
     }
     
     onSave({
-      itemLine: formData.description,
+      item_line: formData.description,
       contractor: formData.vendor || undefined,
-      estimatedCost: estimatedCost,
-      estimatedRevenue: parseFloat(formData.estimatedRevenue),
-      startDate: formData.startDate ? formData.startDate.toISOString() : undefined,
-      dueDate: formData.dueDate ? formData.dueDate.toISOString() : undefined,
-      dependsOn: formData.dependsOn === "none" ? undefined : formData.dependsOn,
+      estimated_cost: estimatedCost,
+      estimated_revenue: parseFloat(formData.estimatedRevenue),
+      start_date: formData.startDate ? formData.startDate.toISOString() : undefined,
+      due_date: formData.dueDate ? formData.dueDate.toISOString() : undefined,
+      depends_on: formData.dependsOn === "none" ? undefined : formData.dependsOn,
       status: formData.status,
       actionType,
       selectedLevel1,
@@ -112,7 +125,8 @@ export const FormStep = ({
       selectedLevel3,
       unit: formData.unit,
       quantity: parseFloat(formData.quantity) || 0,
-      unitPrice: parseFloat(formData.pricePerUnit) || 0,
+      unit_price: parseFloat(formData.pricePerUnit) || 0,
+      parent_id: getParentId(),
     });
     
     onClose();
@@ -364,10 +378,10 @@ export const FormStep = ({
                   <SelectValue placeholder="Select status" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="not-started">Not Started</SelectItem>
-                  <SelectItem value="in-progress">In Progress</SelectItem>
+                  <SelectItem value="not_started">Not Started</SelectItem>
+                  <SelectItem value="in_progress">In Progress</SelectItem>
                   <SelectItem value="completed">Completed</SelectItem>
-                  <SelectItem value="on-hold">On Hold</SelectItem>
+                  <SelectItem value="on_hold">On Hold</SelectItem>
                 </SelectContent>
               </Select>
             </div>

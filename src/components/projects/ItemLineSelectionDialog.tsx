@@ -20,27 +20,29 @@ export const ItemLineSelectionDialog = ({ onSelect, onClose }: ItemLineSelection
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
 
-  const filteredData = estimatesActualsData.filter(item => {
-    const matchesSearch = item.itemLine.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesStatus = statusFilter === "all" || item.status === statusFilter;
-    return matchesSearch && matchesStatus;
-  });
+  const filteredData = Array.isArray(estimatesActualsData) 
+  ? estimatesActualsData.filter(item => {
+      const matchesSearch = item.itemLine.toLowerCase().includes(searchTerm.toLowerCase());
+      const matchesStatus = statusFilter === "all" || item.status === statusFilter;
+      return matchesSearch && matchesStatus;
+    })
+  : [];
 
   const hasActiveFilters = statusFilter !== "all";
 
   const getStatusBadge = (status: string) => {
     const variants = {
-      'not-started': 'bg-gray-100 text-gray-800',
-      'in-progress': 'bg-blue-100 text-blue-800',
+      'not_started': 'bg-gray-100 text-gray-800',
+      'in_progress': 'bg-blue-100 text-blue-800',
       'completed': 'bg-green-100 text-green-800',
-      'on-hold': 'bg-yellow-100 text-yellow-800'
+      'on_hold': 'bg-yellow-100 text-yellow-800'
     };
     
     const labels = {
-      'not-started': 'Not Started',
-      'in-progress': 'In Progress',
+      'not_started': 'Not Started',
+      'in_progress': 'In Progress',
       'completed': 'Completed',
-      'on-hold': 'On Hold'
+      'on_hold': 'On Hold'
     };
 
     return (
@@ -57,10 +59,10 @@ export const ItemLineSelectionDialog = ({ onSelect, onClose }: ItemLineSelection
 
   const statusOptions = [
     { value: "all", label: "All Status" },
-    { value: "not-started", label: "Not Started" },
-    { value: "in-progress", label: "In Progress" },
+    { value: "not_started", label: "Not Started" },
+    { value: "in_progress", label: "In Progress" },
     { value: "completed", label: "Completed" },
-    { value: "on-hold", label: "On Hold" }
+    { value: "on_hold", label: "On Hold" }
   ];
 
   return (
@@ -140,7 +142,10 @@ export const ItemLineSelectionDialog = ({ onSelect, onClose }: ItemLineSelection
                     <TableCell className="text-right">${item.estimatedCost.toLocaleString()}</TableCell>
                     <TableCell className="text-right">${item.actualCost.toLocaleString()}</TableCell>
                     <TableCell className="text-right">${item.estimatedRevenue.toLocaleString()}</TableCell>
-                    <TableCell className="text-right">${item.actualRevenue.toLocaleString()}</TableCell>
+                    <TableCell className="text-right">
+                      {item.actualRevenue != null ? `$${item.actualRevenue.toLocaleString()}` : "-"}
+                    </TableCell>
+
                     <TableCell className="text-right font-bold text-green-600">${profit.toLocaleString()}</TableCell>
                     <TableCell className="text-right">
                       <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${

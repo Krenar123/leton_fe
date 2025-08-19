@@ -3,7 +3,8 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Plus, Search } from "lucide-react";
-import { Task, Objective } from "@/types/strategy";
+import { Task } from "@/types/task";
+import { Objective } from "@/types/objective";
 import { TasksTable } from "./TasksTable";
 import { TasksFilter } from "./TasksFilter";
 
@@ -17,7 +18,7 @@ interface TasksSectionProps {
   onEditTask: (task: Task) => void;
   onDeleteTask: (id: string) => void;
   onFilterChange: (filters: {
-    task?: string;
+    title?: string;
     status?: string;
     participant?: string;
   }) => void;
@@ -79,7 +80,7 @@ export const TasksSection = ({
           <div className="flex items-start gap-3">
             <div className="w-2 h-2 rounded-full mt-2 flex-shrink-0 bg-[#d9a44d]"></div>
             <div>
-              <p className="font-medium text-gray-800 mb-1">{selectedObjective.field}</p>
+              <p className="font-medium text-gray-800 mb-1">{selectedObjective.title}</p>
               {selectedObjective.description && (
                 <p className="text-sm text-gray-600 leading-relaxed">
                   {selectedObjective.description}

@@ -25,7 +25,7 @@ interface FinancialsPageContentProps {
     startDate?: string;
     dueDate?: string;
     dependsOn?: string;
-    status: 'not-started' | 'in-progress' | 'completed' | 'on-hold';
+    status: 'not_started' | 'in_progress' | 'completed' | 'on-hold';
   }) => void;
   onAddInvoicePayment: (itemLine: string, type: 'invoice' | 'bill-paid' | 'invoice-paid' | 'bill', amount: number, expectedDate: string, file?: File) => void;
   onItemLineAction: (itemLine: string, action: 'invoice' | 'bill-paid' | 'invoice-paid' | 'bill' | 'details' | 'edit' | 'delete' | 'complete') => EstimateActualItem | null;
@@ -87,7 +87,7 @@ export const FinancialsPageContent = ({
     startDate?: string;
     dueDate?: string;
     dependsOn?: string;
-    status: 'not-started' | 'in-progress' | 'completed' | 'on-hold';
+    status: 'not_started' | 'in_progress' | 'completed' | 'on-hold';
   }) => {
     onAddItemLine(newItem);
     setEditingItem(undefined);

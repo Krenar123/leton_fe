@@ -29,10 +29,10 @@ interface FinancialTableControlsProps {
 const getStatusOptionsForViewMode = (viewMode: ViewMode) => {
   const baseOptions = [
     { value: "all", label: "All Status" },
-    { value: "not-started", label: "Not Started" },
-    { value: "in-progress", label: "In Progress" },
+    { value: "not_started", label: "Not Started" },
+    { value: "in_progress", label: "In Progress" },
     { value: "completed", label: "Completed" },
-    { value: "on-hold", label: "On Hold" }
+    { value: "on_hold", label: "On Hold" }
   ];
 
   // For different view modes, we might want different filter options

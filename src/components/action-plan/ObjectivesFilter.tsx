@@ -8,7 +8,7 @@ import { Filter, X, Search } from "lucide-react";
 
 interface ObjectivesFilterProps {
   onFilterChange: (filters: {
-    field?: string;
+    title?: string;
     status?: string;
     participant?: string;
   }) => void;
@@ -21,7 +21,7 @@ export const ObjectivesFilter = ({
   onSearchChange,
   searchValue
 }: ObjectivesFilterProps) => {
-  const [field, setField] = useState("");
+  const [title, setTitle] = useState("");
   const [status, setStatus] = useState("");
   const [participant, setParticipant] = useState("");
   const [isOpen, setIsOpen] = useState(false);
@@ -29,7 +29,7 @@ export const ObjectivesFilter = ({
   const handleApplyFilters = (e?: React.FormEvent) => {
     if (e) e.preventDefault();
     onFilterChange({
-      field: field || undefined,
+      title: title || undefined,
       status: status || undefined,
       participant: participant || undefined
     });
@@ -38,13 +38,13 @@ export const ObjectivesFilter = ({
 
   const handleClearFilters = (e?: React.FormEvent) => {
     if (e) e.preventDefault();
-    setField("");
+    setTitle("");
     setStatus("");
     setParticipant("");
     onFilterChange({});
   };
 
-  const hasActiveFilters = field || status || participant;
+  const hasActiveFilters = title || status || participant;
 
   return (
     <div className="flex gap-2">
@@ -81,11 +81,11 @@ export const ObjectivesFilter = ({
             </div>
 
             <div>
-              <Label htmlFor="field-filter" className="text-gray-700">Objective Field</Label>
+              <Label htmlFor="title-filter" className="text-gray-700">Objective Field</Label>
               <Input
-                id="field-filter"
-                value={field}
-                onChange={(e) => setField(e.target.value)}
+                id="title-filter"
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
                 placeholder="Search by field..."
                 className="mt-1"
               />
@@ -98,11 +98,11 @@ export const ObjectivesFilter = ({
                   <SelectValue placeholder="All statuses" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">All statuses</SelectItem>
-                  <SelectItem value="Not Started">Not Started</SelectItem>
-                  <SelectItem value="In Progress">In Progress</SelectItem>
-                  <SelectItem value="Completed">Completed</SelectItem>
-                  <SelectItem value="On Hold">On Hold</SelectItem>
+                  <SelectItem value="all">All statuses</SelectItem> {/* ✅ fix value */}
+                  <SelectItem value="not_started">Not Started</SelectItem>
+                  <SelectItem value="in_progress">In Progress</SelectItem>
+                  <SelectItem value="completed">Completed</SelectItem>
+                  <SelectItem value="on_hold">On Hold</SelectItem>
                 </SelectContent>
               </Select>
             </div>

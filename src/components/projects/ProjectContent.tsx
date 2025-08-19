@@ -41,11 +41,11 @@ export const ProjectContent = ({
   const navigate = useNavigate();
 
   const handleActionPlanClick = () => {
-    navigate(`/projects/${project.id}/action-plan`);
+    navigate(`/projects/${project.ref}/action-plan`);
   };
 
   const handleFinancialsClick = () => {
-    navigate(`/projects/${project.id}/financials`);
+    navigate(`/projects/${project.ref}/financials`);
   };
 
   // Mock data

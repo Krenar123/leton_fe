@@ -2,10 +2,11 @@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { ParticipantsDisplay } from "@/components/action-plan/ParticipantsDisplay";
 import { StatusIcon } from "@/components/action-plan/StatusIcon";
-import { ProjectObjective, ColumnVisibility } from "./types";
+import { Objective } from "@/types/objective";
+import { ColumnVisibility } from "./types";
 
 interface ObjectivesTableProps {
-  objectives: ProjectObjective[];
+  objectives: Objective[];
   columnVisibility: ColumnVisibility;
   onObjectiveClick: (projectId: number) => void;
 }
@@ -25,7 +26,7 @@ export const ObjectivesTable = ({
 
   // Sort objectives by due date (earliest first)
   const sortedObjectives = [...objectives].sort((a, b) => 
-    new Date(a.due).getTime() - new Date(b.due).getTime()
+    new Date(a.end_date).getTime() - new Date(b.end_date).getTime()
   );
 
   return (
@@ -35,8 +36,8 @@ export const ObjectivesTable = ({
           <TableRow className="bg-slate-50">
             <TableHead className="font-semibold">Objective Field</TableHead>
             {columnVisibility.projectName && <TableHead className="font-semibold">Project</TableHead>}
-            {columnVisibility.start && <TableHead className="font-semibold">Start</TableHead>}
-            {columnVisibility.due && <TableHead className="font-semibold">Due</TableHead>}
+            {columnVisibility.start_date && <TableHead className="font-semibold">Start</TableHead>}
+            {columnVisibility.end_date && <TableHead className="font-semibold">Due</TableHead>}
             {columnVisibility.participants && <TableHead className="font-semibold">Participants</TableHead>}
             {columnVisibility.status && <TableHead className="font-semibold">Status</TableHead>}
           </TableRow>
@@ -59,8 +60,8 @@ export const ObjectivesTable = ({
                   {objective.field}
                 </TableCell>
                 {columnVisibility.projectName && <TableCell>{objective.projectName}</TableCell>}
-                {columnVisibility.start && <TableCell>{formatDate(objective.start)}</TableCell>}
-                {columnVisibility.due && <TableCell className="font-bold">{formatDate(objective.due)}</TableCell>}
+                {columnVisibility.start_date && <TableCell>{formatDate(objective.start_date)}</TableCell>}
+                {columnVisibility.end_date && <TableCell className="font-bold">{formatDate(objective.end_date)}</TableCell>}
                 {columnVisibility.participants && (
                   <TableCell>
                     <ParticipantsDisplay participants={objective.participants} />

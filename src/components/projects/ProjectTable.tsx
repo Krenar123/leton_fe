@@ -10,11 +10,12 @@ import { useNavigate } from "react-router-dom";
 
 interface Project {
   id: number;
+  ref: string;
   name: string;
   client: string;
   location: string;
-  start: string;
-  due: string;
+  start_date: string;
+  end_date: string;
   value: number;
   profitability: number;
   status: "Active" | "Completed";
@@ -54,8 +55,8 @@ const ProjectTable = ({ projects, columnVisibility }: ProjectTableProps) => {
     });
   };
 
-  const handleProjectClick = (projectId: number) => {
-    navigate(`/projects/${projectId}`);
+  const handleProjectClick = (projectRef: string) => {
+    navigate(`/projects/${projectRef}`);
   };
 
   return (
@@ -76,19 +77,19 @@ const ProjectTable = ({ projects, columnVisibility }: ProjectTableProps) => {
         <TableBody>
           {projects.map((project) => (
             <TableRow 
-              key={project.id} 
+              key={project.ref} 
               className="hover:bg-slate-50 cursor-pointer transition-colors"
             >
               <TableCell 
                 className="font-medium text-blue-600 hover:text-blue-800 cursor-pointer"
-                onClick={() => handleProjectClick(project.id)}
+                onClick={() => handleProjectClick(project.ref)}
               >
                 {project.name}
               </TableCell>
               {columnVisibility.client && <TableCell>{project.client}</TableCell>}
               {columnVisibility.location && <TableCell>{project.location}</TableCell>}
-              {columnVisibility.start && <TableCell>{formatDate(project.start)}</TableCell>}
-              {columnVisibility.due && <TableCell>{formatDate(project.due)}</TableCell>}
+              {columnVisibility.start && <TableCell>{formatDate(project.start_date)}</TableCell>}
+              {columnVisibility.due && <TableCell>{formatDate(project.end_date)}</TableCell>}
               {columnVisibility.value && <TableCell className="font-medium">{formatCurrency(project.value)}</TableCell>}
               {columnVisibility.profit && (
                 <TableCell>

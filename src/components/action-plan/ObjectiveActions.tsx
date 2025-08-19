@@ -8,7 +8,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Objective } from "@/types/strategy";
+import { Objective } from "@/types/objective";
 
 interface ObjectiveActionsProps {
   objective: Objective;
@@ -20,7 +20,7 @@ interface ObjectiveActionsProps {
 export const ObjectiveActions = ({ objective, onEdit, onDelete, onStatusChange }: ObjectiveActionsProps) => {
   const handleStatusToggle = () => {
     const newStatus = objective.status === 'Finished' ? 'In Progress' : 'Finished';
-    onStatusChange(objective.id, newStatus);
+    onStatusChange(objective.ref, newStatus);
   };
 
   return (
@@ -51,7 +51,7 @@ export const ObjectiveActions = ({ objective, onEdit, onDelete, onStatusChange }
         </DropdownMenuItem>
         <DropdownMenuSeparator />
         <DropdownMenuItem 
-          onClick={() => onDelete(objective.id)} 
+          onClick={() => onDelete(objective.ref)} 
           className="cursor-pointer text-red-600 hover:text-red-700"
         >
           <Trash2 className="w-4 h-4 mr-2" />
