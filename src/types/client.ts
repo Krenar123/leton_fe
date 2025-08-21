@@ -1,23 +1,25 @@
 
+// src/types/client.ts
 export interface Client {
-  id: number;
-  name: string;
+  ref: string;
   company: string;
-  email: string;
-  phone: string;
-  address: string;
-  businessNumber?: string;
-  vat?: string;
+  contactName: string;
+  email?: string;
+  phone?: string;
+  address?: string;
+  website?: string;
+  industry?: string;
+  status: "active" | "inactive" | "prospect";
   currentProjects: number;
   totalProjects: number;
   totalValue: number;
   totalPaid: number;
   totalOutstanding: number;
-  firstProject: string;
-  lastProject: string;
-  profitability: number;
-  description?: string;
+  firstProject?: string | null;
+  lastProject?: string | null;
+  profitability?: number;
 }
+
 
 export interface ClientFilterState {
   company: string;

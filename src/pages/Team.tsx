@@ -1,4 +1,4 @@
-
+// src/pages/Team.tsx
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { TeamFilters } from "@/components/team/TeamFilters";
@@ -10,7 +10,9 @@ import { useTeamData } from "@/hooks/useTeamData";
 const Team = () => {
   const navigate = useNavigate();
   const [isAddMemberOpen, setIsAddMemberOpen] = useState(false);
+
   const {
+    isLoading,
     searchTerm,
     setSearchTerm,
     departmentFilter,
@@ -19,40 +21,44 @@ const Team = () => {
     filteredMembers,
     clearFilters,
     hasActiveFilters,
-    addMember
+    addMember,
   } = useTeamData();
 
-  const handleMemberClick = (memberId: number) => {
-    navigate(`/team/${memberId}`);
+  const handleMemberClick = (memberRef: string) => {
+    // memberRef IS the user ref coming from the serializer id
+    navigate(`/team/${memberRef}`);
   };
 
-  const handleAddMember = (memberData: {
-    name: string;
-    position: string;
-    department: string;
-    email: string;
-    phone: string;
-    address: string;
+  const handleAddMember = async (memberData: {
+    name: string; position: string; department: string;
+    email: string; phone: string; address: string;
   }) => {
-    addMember(memberData);
+    await addMember(memberData);
+    setIsAddMemberOpen(false);
   };
+
+  if (isLoading) {
+    return <div className="py-12 text-center">Loading team…</div>;
+  }
 
   return (
     <div className="space-y-6 my-[16px]">
-      <TeamFilters 
-        searchTerm={searchTerm} 
-        onSearchChange={setSearchTerm} 
-        departmentFilter={departmentFilter} 
-        onDepartmentChange={setDepartmentFilter} 
-        departments={departments} 
-        onClearFilters={clearFilters} 
+      <TeamFilters
+        searchTerm={searchTerm}
+        onSearchChange={setSearchTerm}
+        departmentFilter={departmentFilter}
+        onDepartmentChange={setDepartmentFilter}
+        departments={departments}
+        onClearFilters={clearFilters}
         hasActiveFilters={hasActiveFilters}
         onAddMember={() => setIsAddMemberOpen(true)}
       />
 
       <TeamGrid members={filteredMembers} onMemberClick={handleMemberClick} />
 
-      {filteredMembers.length === 0 && <EmptyState onClearFilters={clearFilters} />}
+      {filteredMembers.length === 0 && (
+        <EmptyState onClearFilters={clearFilters} />
+      )}
 
       <AddMemberDialog
         isOpen={isAddMemberOpen}

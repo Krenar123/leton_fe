@@ -1,5 +1,4 @@
-
-import { useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   Dialog,
   DialogContent,
@@ -9,7 +8,13 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue
+} from "@/components/ui/select";
 
 interface AddMemberDialogProps {
   isOpen: boolean;
@@ -24,6 +29,8 @@ interface AddMemberDialogProps {
   }) => void;
   departments: string[];
 }
+
+const CUSTOM_DEPT = "__NEW_CUSTOM_DEPARTMENT__";
 
 export const AddMemberDialog = ({
   isOpen,
@@ -40,10 +47,20 @@ export const AddMemberDialog = ({
     address: ""
   });
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (formData.name && formData.position && formData.department && formData.email) {
-      onAddMember(formData);
+  const [deptMode, setDeptMode] = useState<"select" | "custom">("select");
+  const [errors, setErrors] = useState<Record<string, string>>({});
+
+  const customDeptInputRef = useRef<HTMLInputElement>(null);
+
+  // unique, sorted department list (just in case)
+  const deptOptions = useMemo(() => {
+    const set = new Set(departments.filter(Boolean).map(d => d.trim()));
+    return Array.from(set).sort((a, b) => a.localeCompare(b));
+  }, [departments]);
+
+  useEffect(() => {
+    if (!isOpen) {
+      // reset when closed
       setFormData({
         name: "",
         position: "",
@@ -52,12 +69,86 @@ export const AddMemberDialog = ({
         phone: "",
         address: ""
       });
-      onOpenChange(false);
+      setDeptMode("select");
+      setErrors({});
+    }
+  }, [isOpen]);
+
+  const handleChange = (field: keyof typeof formData, value: string) => {
+    setFormData(prev => ({ ...prev, [field]: value }));
+    if (errors[field]) {
+      setErrors(prev => {
+        const next = { ...prev };
+        delete next[field];
+        return next;
+      });
     }
   };
 
-  const handleChange = (field: string, value: string) => {
-    setFormData(prev => ({ ...prev, [field]: value }));
+  const handleSelectDept = (value: string) => {
+    if (value === CUSTOM_DEPT) {
+      setDeptMode("custom");
+      setFormData(prev => ({ ...prev, department: "" }));
+      // focus custom input next tick
+      setTimeout(() => customDeptInputRef.current?.focus(), 0);
+    } else {
+      setDeptMode("select");
+      handleChange("department", value);
+    }
+  };
+
+  const validate = () => {
+    const e: Record<string, string> = {};
+    const trimmed = {
+      name: formData.name.trim(),
+      position: formData.position.trim(),
+      email: formData.email.trim(),
+      department:
+        deptMode === "custom"
+          ? formData.department.trim()
+          : formData.department.trim(),
+    };
+
+    if (!trimmed.name) e.name = "Full name is required";
+    if (!trimmed.position) e.position = "Position is required";
+    if (!trimmed.department) e.department = "Department is required";
+    if (!trimmed.email) e.email = "Email is required";
+    else {
+      // light email sanity check
+      const ok = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmed.email);
+      if (!ok) e.email = "Enter a valid email";
+    }
+    setErrors(e);
+    return Object.keys(e).length === 0;
+  };
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!validate()) return;
+
+    const payload = {
+      name: formData.name.trim(),
+      position: formData.position.trim(),
+      department: formData.department.trim(),
+      email: formData.email.trim().toLowerCase(),
+      phone: formData.phone.trim(),
+      address: formData.address.trim(),
+    };
+
+    onAddMember(payload);
+
+    // reset & close
+    setFormData({
+      name: "",
+      position: "",
+      department: "",
+      email: "",
+      phone: "",
+      address: ""
+    });
+    setDeptMode("select");
+    setErrors({});
+    onOpenChange(false);
   };
 
   return (
@@ -76,8 +167,9 @@ export const AddMemberDialog = ({
                 value={formData.name}
                 onChange={(e) => handleChange("name", e.target.value)}
                 placeholder="John Smith"
-                required
+                aria-invalid={!!errors.name}
               />
+              {errors.name && <p className="mt-1 text-xs text-red-600">{errors.name}</p>}
             </div>
             <div>
               <Label htmlFor="position">Position *</Label>
@@ -86,23 +178,64 @@ export const AddMemberDialog = ({
                 value={formData.position}
                 onChange={(e) => handleChange("position", e.target.value)}
                 placeholder="Project Manager"
-                required
+                aria-invalid={!!errors.position}
               />
+              {errors.position && <p className="mt-1 text-xs text-red-600">{errors.position}</p>}
             </div>
           </div>
-          
-          <div>
-            <Label htmlFor="department">Department *</Label>
-            <Select value={formData.department} onValueChange={(value) => handleChange("department", value)}>
-              <SelectTrigger>
-                <SelectValue placeholder="Select department" />
-              </SelectTrigger>
-              <SelectContent>
-                {departments.map(dept => (
-                  <SelectItem key={dept} value={dept}>{dept}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+
+          <div className="space-y-2">
+            <Label>Department *</Label>
+
+            {deptMode === "select" && (
+              <Select
+                value={formData.department || ""}
+                onValueChange={handleSelectDept}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select department" />
+                </SelectTrigger>
+                <SelectContent>
+                  {deptOptions.map((dept) => (
+                    <SelectItem key={dept} value={dept}>
+                      {dept}
+                    </SelectItem>
+                  ))}
+                  <SelectItem value={CUSTOM_DEPT}>Other…</SelectItem>
+                </SelectContent>
+              </Select>
+            )}
+
+            {deptMode === "custom" && (
+              <div className="grid grid-cols-3 gap-2">
+                <div className="col-span-2">
+                  <Input
+                    ref={customDeptInputRef}
+                    placeholder="Type new department"
+                    value={formData.department}
+                    onChange={(e) => handleChange("department", e.target.value)}
+                    aria-invalid={!!errors.department}
+                  />
+                  {errors.department && (
+                    <p className="mt-1 text-xs text-red-600">{errors.department}</p>
+                  )}
+                </div>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => {
+                    setDeptMode("select");
+                    setFormData(prev => ({ ...prev, department: "" }));
+                  }}
+                >
+                  Back
+                </Button>
+              </div>
+            )}
+
+            {deptMode === "select" && errors.department && (
+              <p className="mt-1 text-xs text-red-600">{errors.department}</p>
+            )}
           </div>
 
           <div className="grid grid-cols-2 gap-4">
@@ -114,8 +247,9 @@ export const AddMemberDialog = ({
                 value={formData.email}
                 onChange={(e) => handleChange("email", e.target.value)}
                 placeholder="john@company.com"
-                required
+                aria-invalid={!!errors.email}
               />
+              {errors.email && <p className="mt-1 text-xs text-red-600">{errors.email}</p>}
             </div>
             <div>
               <Label htmlFor="phone">Phone</Label>
@@ -138,8 +272,12 @@ export const AddMemberDialog = ({
             />
           </div>
 
-          <div className="flex justify-end space-x-3 pt-4">
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+          <div className="flex justify-end gap-3 pt-4">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => onOpenChange(false)}
+            >
               Cancel
             </Button>
             <Button type="submit" className="bg-slate-800 hover:bg-slate-700">

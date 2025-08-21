@@ -1,104 +1,171 @@
+// src/hooks/useTeamMemberData.ts
+import { useMemo } from "react";
+import { useQuery } from "@tanstack/react-query";
+import {
+  fetchUserByRef,
+  fetchUserObjectives,
+  fetchUserTasks,
+  fetchUserMeetings,
+  fetchUserWagePayments,
+  fetchUserNotes,
+  updateUser,
+} from "@/services/api";
 
-import { Objective, Task } from "@/types/strategy";
+export const useTeamMemberData = (userRef: string) => {
+  const { data: userRaw, isLoading: lUser } = useQuery({
+    queryKey: ["user", userRef],
+    queryFn: () => fetchUserByRef(userRef),
+    enabled: !!userRef,
+  });
 
-interface Meeting {
-  id: string;
-  company: string;
-  person: string;
-  ourPersons: string[];
-  description: string;
-  project: string;
-  location: string;
-  date: string;
-  time: string;
-}
+  const { data: objRaw, isLoading: lObj } = useQuery({
+    queryKey: ["userObjectives", userRef],
+    queryFn: () => fetchUserObjectives(userRef),
+    enabled: !!userRef,
+  });
 
-interface TeamMemberData {
-  objectives: {
-    completed: number;
-    total: number;
-    data: Objective[];
-  };
-  tasks: {
-    completed: number;
-    total: number;
-    data: Task[];
-  };
-  meetings: Meeting[];
-}
+  const { data: tasksRaw, isLoading: lTasks } = useQuery({
+    queryKey: ["userTasks", userRef],
+    queryFn: () => fetchUserTasks(userRef),
+    enabled: !!userRef,
+  });
 
-export const useTeamMemberData = (memberId: number): TeamMemberData => {
-  // Mock data - in a real app, this would come from an API
+  const { data: meetingsRaw, isLoading: lMeet } = useQuery({
+    queryKey: ["userMeetings", userRef],
+    queryFn: () => fetchUserMeetings(userRef),
+    enabled: !!userRef,
+  });
+
+  const { data: wagesRaw, isLoading: lWages } = useQuery({
+    queryKey: ["userWages", userRef],
+    queryFn: () => fetchUserWagePayments(userRef),
+    enabled: !!userRef,
+  });
+
+  const { data: notesRaw, isLoading: lNotes } = useQuery({
+    queryKey: ["userNotes", userRef],
+    queryFn: () => fetchUserNotes(userRef),
+    enabled: !!userRef,
+  });
+
+  // flatten JSON:API
+  const user = useMemo(() => {
+    const d = userRaw?.data;
+    if (!d) return null;
+    const a = d.attributes || {};
+    return {
+      ref: d.id,
+      name: a.fullName,
+      email: a.email,
+      phone: a.phone || "",
+      address: a.address || "",
+      position: a.position || "",
+      department: a.department || "",
+      avatar: a.avatarUrl || "",
+      companyName: a.companyName || "",
+      role: a.role,
+    };
+  }, [userRaw]);
+
+  const objectives = useMemo(() => {
+    const arr = Array.isArray(objRaw?.data) ? objRaw.data : [];
+    const items = arr.map((e: any) => {
+      const a = e.attributes || {};
+      return {
+        id: e.id,
+        title: a.title,
+        description: a.description,
+        status: a.status,
+        priority: a.priority,
+        startDate: a.startDate,
+        endDate: a.endDate,
+      };
+    });
+    return {
+      total: items.length,
+      completed: items.filter(o => o.status === "completed").length,
+      items,
+    };
+  }, [objRaw]);
+
+  const tasks = useMemo(() => {
+    const arr = Array.isArray(tasksRaw?.data) ? tasksRaw.data : [];
+    const items = arr.map((e: any) => {
+      const a = e.attributes || {};
+      return {
+        id: e.id,
+        title: a.title,
+        description: a.description,
+        status: a.status,
+        priority: a.priority,
+        start_date: a.startDate,
+        due_date: a.dueDate,
+      };
+    });
+    return {
+      total: items.length,
+      completed: items.filter(t => t.status === "completed").length,
+      items,
+    };
+  }, [tasksRaw]);
+
+  const meetings = useMemo(() => {
+    const arr = Array.isArray(meetingsRaw?.data) ? meetingsRaw.data : [];
+    return arr.map((e: any) => {
+      const a = e.attributes || {};
+      // map to your TeamMemberMeetings shape
+      return {
+        id: e.id,
+        person: a.organizerName || "", // or other field you prefer
+        date: a.meetingDate,
+        time: a.meetingDate ? new Date(a.meetingDate).toISOString().slice(11,16) : "",
+        title: a.title,
+        location: a.location,
+        status: a.status,
+      };
+    }).sort((a: any, b: any) =>
+      new Date(a.date).getTime() - new Date(b.date).getTime()
+    );
+  }, [meetingsRaw]);
+
+  const wagePayments = useMemo(() => {
+    const arr = Array.isArray(wagesRaw?.data) ? wagesRaw.data : [];
+    return arr.map((e: any) => {
+      const a = e.attributes || {};
+      return {
+        id: e.id,
+        date: a.workDate,
+        hoursWorked: Number(a.hoursWorked || 0),
+        hourlyRate: Number(a.hourlyRate || 0),
+        totalCost: Number(a.totalCost || 0),
+        description: a.description || "",
+      };
+    });
+  }, [wagesRaw]);
+
+  const notes = useMemo(() => {
+    const arr = Array.isArray(notesRaw?.data) ? notesRaw.data : [];
+    return arr.map((e: any) => {
+      const a = e.attributes || {};
+      return {
+        id: e.id,
+        title: a.title,
+        content: a.content,
+        type: a.noteType,
+        createdAt: a.createdAt,
+        updatedAt: a.updatedAt,
+      };
+    });
+  }, [notesRaw]);
+
   return {
-    objectives: {
-      completed: 8,
-      total: 12,
-      data: [
-        {
-          id: "1",
-          field: "Complete foundation inspection",
-          start: "2025-01-15",
-          due: "2025-02-15",
-          participants: ["John Smith", "Mike Davis"],
-          status: "In Progress" as const
-        },
-        {
-          id: "2", 
-          field: "Review architectural plans",
-          start: "2025-01-20",
-          due: "2025-02-10",
-          participants: ["Lisa Chen", "Sarah Johnson"],
-          status: "Finished" as const
-        }
-      ]
-    },
-    tasks: {
-      completed: 15,
-      total: 20,
-      data: [
-        {
-          id: "1",
-          objectiveId: "1",
-          task: "Schedule inspection team",
-          start: "2025-01-15",
-          due: "2025-01-20",
-          participants: ["John Smith"],
-          status: "Finished" as const
-        },
-        {
-          id: "2",
-          objectiveId: "1", 
-          task: "Prepare inspection checklist",
-          start: "2025-01-18",
-          due: "2025-01-25",
-          participants: ["Mike Davis"],
-          status: "In Progress" as const
-        }
-      ]
-    },
-    meetings: [
-      {
-        id: "1",
-        company: "BuildCorp Inc",
-        person: "James Wilson",
-        ourPersons: ["John Smith", "Sarah Johnson"],
-        description: "Project status review",
-        project: "Office Building Renovation",
-        location: "Conference Room A",
-        date: "2025-07-15",
-        time: "10:00 AM"
-      },
-      {
-        id: "2",
-        company: "Design Studios",
-        person: "Emma Davis",
-        ourPersons: ["Lisa Chen"],
-        description: "Design approval meeting",
-        project: "Residential Complex",
-        location: "Client Office",
-        date: "2025-07-18",
-        time: "2:00 PM"
-      }
-    ]
+    isLoading: lUser || lObj || lTasks || lMeet || lWages || lNotes,
+    user,
+    objectives,
+    tasks,
+    meetings,
+    wagePayments,
+    notes,
+    updateUser: (payload: any) => updateUser(userRef, payload),
   };
 };

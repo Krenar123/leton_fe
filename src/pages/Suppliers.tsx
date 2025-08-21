@@ -1,94 +1,55 @@
-import { useState } from "react";
+// src/pages/Suppliers.tsx
+import { useMemo, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { Card } from "@/components/ui/card";
 import SupplierOverview from "@/components/suppliers/SupplierOverview";
 import SupplierFilters from "@/components/suppliers/SupplierFilters";
 import SupplierTable from "@/components/suppliers/SupplierTable";
 import { Supplier, SupplierFilterState, SupplierColumnVisibility } from "@/types/supplier";
-
-const mockSuppliers: Supplier[] = [{
-  id: 1,
-  name: "ABC Construction",
-  company: "ABC Construction LLC",
-  email: "contact@abcconstruction.com",
-  phone: "+1 (555) 123-4567",
-  address: "123 Builder St, New York, NY 10001",
-  currentProjects: 2,
-  totalProjects: 5,
-  totalValue: 45000,
-  totalPaid: 30000,
-  totalOutstanding: 15000,
-  firstProject: "2023-01-15",
-  lastProject: "2025-07-15",
-  profitability: 18.5,
-  description: "Foundation and structural work specialist"
-}, {
-  id: 2,
-  name: "ElectroMax Ltd",
-  company: "ElectroMax Electrical Services",
-  email: "info@electromax.com",
-  phone: "+1 (555) 987-6543",
-  address: "456 Electric Ave, Los Angeles, CA 90210",
-  currentProjects: 1,
-  totalProjects: 3,
-  totalValue: 28000,
-  totalPaid: 25000,
-  totalOutstanding: 3000,
-  firstProject: "2024-03-10",
-  lastProject: "2025-08-01",
-  profitability: 22.3,
-  description: "Electrical installation and maintenance"
-}, {
-  id: 3,
-  name: "PlumbPro Services",
-  company: "PlumbPro Plumbing Solutions",
-  email: "service@plumbpro.com",
-  phone: "+1 (555) 456-7890",
-  address: "789 Water St, Chicago, IL 60601",
-  currentProjects: 0,
-  totalProjects: 2,
-  totalValue: 22000,
-  totalPaid: 22000,
-  totalOutstanding: 0,
-  firstProject: "2024-02-10",
-  lastProject: "2024-07-20",
-  profitability: 15.8,
-  description: "Plumbing and water systems"
-}, {
-  id: 4,
-  name: "RoofMasters Inc",
-  company: "RoofMasters Roofing",
-  email: "jobs@roofmasters.com",
-  phone: "+1 (555) 321-0987",
-  address: "321 Top St, Miami, FL 33101",
-  currentProjects: 1,
-  totalProjects: 4,
-  totalValue: 38000,
-  totalPaid: 20000,
-  totalOutstanding: 18000,
-  firstProject: "2023-06-01",
-  lastProject: "2025-09-15",
-  profitability: 19.2,
-  description: "Roofing and exterior work"
-}];
+import { fetchSuppliers } from "@/services/api";
 
 const Suppliers = () => {
-  const [suppliers] = useState<Supplier[]>(mockSuppliers);
+  // 1) Fetch RAW JSON:API from BE
+  const { data: suppliersRaw, isLoading, error } = useQuery({
+    queryKey: ["suppliers"],
+    queryFn: fetchSuppliers,
+  });
+
+  // 2) Map JSON:API -> flat array your UI expects
+  const suppliers: Supplier[] = useMemo(() => {
+    const arr = Array.isArray(suppliersRaw?.data) ? suppliersRaw.data : [];
+    return arr.map((entry: any) => {
+      const a = entry.attributes || {};
+      return {
+        // Your table uses numeric id; we can keep string safely as id (or create hash)
+        id: entry.id,                       // use `ref`/id from BE as stable identifier
+        name: a.contactName || a.company || "",
+        company: a.company || "",
+        email: a.email || "",
+        phone: a.phone || "",
+        address: a.address || "",
+        currentProjects: a.currentProjects ?? 0,
+        totalProjects: a.totalProjects ?? 0,
+        totalValue: a.totalValue ?? 0,
+        totalPaid: a.totalPaid ?? 0,
+        totalOutstanding: a.totalOutstanding ?? 0,
+        firstProject: a.firstProject || "",
+        lastProject: a.lastProject || "",
+        profitability: a.profitability ?? 0,
+        description: "", // not provided by BE; keep empty for now
+        __ref: entry.id, // handy if you need to navigate by ref later
+      } as Supplier;
+    });
+  }, [suppliersRaw]);
+
+  // 3) Local UI state (unchanged)
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState<"all" | "active">("all");
   const [filters, setFilters] = useState<SupplierFilterState>({
     company: "",
-    totalValue: {
-      min: "",
-      max: ""
-    },
-    totalProjects: {
-      min: "",
-      max: ""
-    },
-    profitability: {
-      min: "",
-      max: ""
-    }
+    totalValue: { min: "", max: "" },
+    totalProjects: { min: "", max: "" },
+    profitability: { min: "", max: "" },
   });
   const [columnVisibility, setColumnVisibility] = useState<SupplierColumnVisibility>({
     company: true,
@@ -100,75 +61,83 @@ const Suppliers = () => {
     totalOutstanding: true,
     firstProject: false,
     lastProject: false,
-    profitability: false
+    profitability: false,
   });
 
-  const activeSuppliers = suppliers.filter(s => s.currentProjects > 0);
-  const totalValue = suppliers.reduce((sum, supplier) => sum + supplier.totalValue, 0);
-  const totalPaid = suppliers.reduce((sum, supplier) => sum + supplier.totalPaid, 0);
-  const totalOutstanding = suppliers.reduce((sum, supplier) => sum + supplier.totalOutstanding, 0);
-  const hasActiveFilters = Object.values(filters).some(filter => typeof filter === 'string' ? filter !== '' : filter.min !== '' || filter.max !== '');
+  // 4) Overview numbers
+  const activeSuppliers = useMemo(
+    () => suppliers.filter(s => (s.currentProjects ?? 0) > 0),
+    [suppliers]
+  );
+  const totalValue = useMemo(
+    () => suppliers.reduce((sum, s) => sum + (s.totalValue ?? 0), 0),
+    [suppliers]
+  );
+  const totalPaid = useMemo(
+    () => suppliers.reduce((sum, s) => sum + (s.totalPaid ?? 0), 0),
+    [suppliers]
+  );
+  const totalOutstanding = useMemo(
+    () => suppliers.reduce((sum, s) => sum + (s.totalOutstanding ?? 0), 0),
+    [suppliers]
+  );
 
-  const getFilteredSuppliers = () => {
-    let filtered = suppliers;
+  // 5) Filters
+  const hasActiveFilters =
+    filters.company !== "" ||
+    filters.totalValue.min !== "" || filters.totalValue.max !== "" ||
+    filters.totalProjects.min !== "" || filters.totalProjects.max !== "" ||
+    filters.profitability.min !== "" || filters.profitability.max !== "";
 
-    // Status filter from tabs
+  const filteredSuppliers: Supplier[] = useMemo(() => {
+    let filtered = suppliers.slice();
+
     if (statusFilter === "active") {
-      filtered = filtered.filter(s => s.currentProjects > 0);
+      filtered = filtered.filter(s => (s.currentProjects ?? 0) > 0);
     }
 
-    // Search filter
     if (searchTerm) {
-      filtered = filtered.filter(supplier => supplier.name.toLowerCase().includes(searchTerm.toLowerCase()) || supplier.company.toLowerCase().includes(searchTerm.toLowerCase()) || supplier.email.toLowerCase().includes(searchTerm.toLowerCase()));
+      const s = searchTerm.toLowerCase();
+      filtered = filtered.filter(sup =>
+        (sup.name || "").toLowerCase().includes(s) ||
+        (sup.company || "").toLowerCase().includes(s) ||
+        (sup.email || "").toLowerCase().includes(s)
+      );
     }
 
-    // Additional filters
     if (filters.company) {
-      filtered = filtered.filter(s => s.company.toLowerCase().includes(filters.company.toLowerCase()));
+      const s = filters.company.toLowerCase();
+      filtered = filtered.filter(sup => (sup.company || "").toLowerCase().includes(s));
     }
-    if (filters.totalValue.min) {
-      filtered = filtered.filter(s => s.totalValue >= parseInt(filters.totalValue.min));
-    }
-    if (filters.totalValue.max) {
-      filtered = filtered.filter(s => s.totalValue <= parseInt(filters.totalValue.max));
-    }
-    if (filters.totalProjects.min) {
-      filtered = filtered.filter(s => s.totalProjects >= parseInt(filters.totalProjects.min));
-    }
-    if (filters.totalProjects.max) {
-      filtered = filtered.filter(s => s.totalProjects <= parseInt(filters.totalProjects.max));
-    }
-    if (filters.profitability.min) {
-      filtered = filtered.filter(s => s.profitability >= parseFloat(filters.profitability.min));
-    }
-    if (filters.profitability.max) {
-      filtered = filtered.filter(s => s.profitability <= parseFloat(filters.profitability.max));
-    }
-    return filtered;
-  };
 
-  const filteredSuppliers = getFilteredSuppliers();
+    if (filters.totalValue.min) filtered = filtered.filter(sup => (sup.totalValue ?? 0) >= parseFloat(filters.totalValue.min));
+    if (filters.totalValue.max) filtered = filtered.filter(sup => (sup.totalValue ?? 0) <= parseFloat(filters.totalValue.max));
+
+    if (filters.totalProjects.min) filtered = filtered.filter(sup => (sup.totalProjects ?? 0) >= parseInt(filters.totalProjects.min));
+    if (filters.totalProjects.max) filtered = filtered.filter(sup => (sup.totalProjects ?? 0) <= parseInt(filters.totalProjects.max));
+
+    if (filters.profitability.min) filtered = filtered.filter(sup => (sup.profitability ?? 0) >= parseFloat(filters.profitability.min));
+    if (filters.profitability.max) filtered = filtered.filter(sup => (sup.profitability ?? 0) <= parseFloat(filters.profitability.max));
+
+    return filtered;
+  }, [suppliers, statusFilter, searchTerm, filters]);
+
   const clearFilters = () => {
     setFilters({
       company: "",
-      totalValue: {
-        min: "",
-        max: ""
-      },
-      totalProjects: {
-        min: "",
-        max: ""
-      },
-      profitability: {
-        min: "",
-        max: ""
-      }
+      totalValue: { min: "", max: "" },
+      totalProjects: { min: "", max: "" },
+      profitability: { min: "", max: "" },
     });
   };
 
+  // 6) Loading / error
+  if (isLoading) return <div className="px-6 py-6">Loading suppliers…</div>;
+  if (error) return <div className="px-6 py-6 text-red-600">Failed to load suppliers.</div>;
+
+  // 7) Render
   return (
     <div className="space-y-6 my-[16px] mx-[16px]">
-      {/* Vendor Overview */}
       <SupplierOverview
         totalSuppliers={suppliers.length}
         activeSuppliers={activeSuppliers.length}
@@ -179,9 +148,7 @@ const Suppliers = () => {
         onStatusChange={setStatusFilter}
       />
 
-      {/* Vendor List */}
       <Card className="p-6 px-[16px] py-[16px]">
-        {/* Search and Controls */}
         <SupplierFilters
           searchTerm={searchTerm}
           onSearchChange={setSearchTerm}
@@ -193,8 +160,10 @@ const Suppliers = () => {
           onClearFilters={clearFilters}
         />
 
-        {/* Vendors Table */}
-        <SupplierTable suppliers={filteredSuppliers} columnVisibility={columnVisibility} />
+        <SupplierTable
+          suppliers={filteredSuppliers}
+          columnVisibility={columnVisibility}
+        />
       </Card>
     </div>
   );

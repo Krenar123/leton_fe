@@ -1,17 +1,26 @@
-
+// src/components/clients/ClientEditDialog.tsx
 import { DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Mail, Phone, Plus, X } from "lucide-react";
+import { Mail, Phone, X } from "lucide-react";
 import { useState } from "react";
 import { Client } from "@/types/client";
 
 interface ClientEditDialogProps {
-  client: Client;
+  client: Client; // should expose camelCase fields e.g. contactName
   onClose: () => void;
-  onUpdate: (client: Client) => void;
+  onUpdate: (client: {
+    company?: string;
+    contactName?: string;
+    email?: string;
+    phone?: string;
+    address?: string;
+    website?: string;
+    industry?: string;
+    status?: string;
+  }) => void;
 }
 
 interface ContactInfo {
@@ -22,57 +31,52 @@ interface ContactInfo {
 
 export const ClientEditDialog = ({ client, onClose, onUpdate }: ClientEditDialogProps) => {
   const [formData, setFormData] = useState({
-    name: client.name,
-    company: client.company,
-    address: client.address,
-    description: client.description || ""
+    company: client.company || "",
+    contactName: (client as any).contactName || "",   // was `name` before
+    address: client.address || "",
+    website: (client as any).website || "",
+    industry: (client as any).industry || "",
+    status: (client as any).status || "active",
+    notes: "" // still local-only; not saved on Client model
   });
 
   const [contacts, setContacts] = useState<ContactInfo[]>([
-    { id: '1', type: 'email', value: client.email },
-    { id: '2', type: 'phone', value: client.phone }
+    { id: '1', type: 'email', value: client.email || "" },
+    { id: '2', type: 'phone', value: client.phone || "" }
   ]);
 
   const handleSave = () => {
     const primaryEmail = contacts.find(c => c.type === 'email')?.value || '';
     const primaryPhone = contacts.find(c => c.type === 'phone')?.value || '';
-    
-    const updatedClient = {
-      ...client,
-      ...formData,
+
+    onUpdate({
+      company: formData.company,
+      contactName: formData.contactName,  // camelCase; hook maps to contact_name
       email: primaryEmail,
-      phone: primaryPhone
-    };
-    onUpdate(updatedClient);
+      phone: primaryPhone,
+      address: formData.address,
+      website: formData.website,
+      industry: formData.industry,
+      status: formData.status,
+    });
+
     onClose();
   };
 
   const addContact = (type: 'email' | 'phone') => {
-    const newContact: ContactInfo = {
-      id: Date.now().toString(),
-      type,
-      value: ''
-    };
-    setContacts([...contacts, newContact]);
+    setContacts(prev => [...prev, { id: String(Date.now()), type, value: "" }]);
   };
 
   const removeContact = (id: string) => {
-    if (contacts.length > 1) {
-      setContacts(contacts.filter(c => c.id !== id));
-    }
+    setContacts(prev => (prev.length > 1 ? prev.filter(c => c.id !== id) : prev));
   };
 
   const updateContact = (id: string, value: string) => {
-    setContacts(contacts.map(c => c.id === id ? { ...c, value } : c));
+    setContacts(prev => prev.map(c => (c.id === id ? { ...c, value } : c)));
   };
 
-  const handleEmailClick = (email: string) => {
-    window.open(`mailto:${email}`, '_self');
-  };
-
-  const handlePhoneClick = (phone: string) => {
-    window.open(`tel:${phone}`, '_self');
-  };
+  const handleEmailClick = (email: string) => window.open(`mailto:${email}`, '_self');
+  const handlePhoneClick = (phone: string) => window.open(`tel:${phone}`, '_self');
 
   return (
     <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
@@ -93,26 +97,48 @@ export const ClientEditDialog = ({ client, onClose, onUpdate }: ClientEditDialog
             />
           </div>
           <div>
-            <Label htmlFor="name">Contact Person</Label>
+            <Label htmlFor="contactName">Contact Person</Label>
             <Input
-              id="name"
-              value={formData.name}
-              onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+              id="contactName"
+              value={formData.contactName}
+              onChange={(e) => setFormData({ ...formData, contactName: e.target.value })}
               className="mt-1"
             />
           </div>
         </div>
 
-        {/* Address */}
-        <div>
-          <Label htmlFor="address">Address</Label>
-          <Textarea
-            id="address"
-            value={formData.address}
-            onChange={(e) => setFormData({ ...formData, address: e.target.value })}
-            className="mt-1"
-            rows={2}
-          />
+        {/* Address / Website / Industry / Status */}
+        <div className="grid grid-cols-2 gap-4">
+          <div>
+            <Label htmlFor="address">Address</Label>
+            <Textarea
+              id="address"
+              value={formData.address}
+              onChange={(e) => setFormData({ ...formData, address: e.target.value })}
+              className="mt-1"
+              rows={2}
+            />
+          </div>
+          <div className="grid grid-cols-1 gap-4">
+            <div>
+              <Label htmlFor="website">Website</Label>
+              <Input
+                id="website"
+                value={formData.website}
+                onChange={(e) => setFormData({ ...formData, website: e.target.value })}
+                className="mt-1"
+              />
+            </div>
+            <div>
+              <Label htmlFor="industry">Industry</Label>
+              <Input
+                id="industry"
+                value={formData.industry}
+                onChange={(e) => setFormData({ ...formData, industry: e.target.value })}
+                className="mt-1"
+              />
+            </div>
+          </div>
         </div>
 
         {/* Contact Information */}
@@ -120,23 +146,11 @@ export const ClientEditDialog = ({ client, onClose, onUpdate }: ClientEditDialog
           <div className="flex items-center justify-between mb-3">
             <Label className="text-sm font-medium text-gray-700">Contact Information</Label>
             <div className="flex space-x-2">
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={() => addContact('email')}
-              >
-                <Mail className="w-4 h-4 mr-1" />
-                Add Email
+              <Button type="button" variant="outline" size="sm" onClick={() => addContact('email')}>
+                <Mail className="w-4 h-4 mr-1" /> Add Email
               </Button>
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={() => addContact('phone')}
-              >
-                <Phone className="w-4 h-4 mr-1" />
-                Add Phone
+              <Button type="button" variant="outline" size="sm" onClick={() => addContact('phone')}>
+                <Phone className="w-4 h-4 mr-1" /> Add Phone
               </Button>
             </div>
           </div>
@@ -162,8 +176,8 @@ export const ClientEditDialog = ({ client, onClose, onUpdate }: ClientEditDialog
                         type="button"
                         variant="ghost"
                         size="sm"
-                        onClick={() => 
-                          contact.type === 'email' 
+                        onClick={() =>
+                          contact.type === 'email'
                             ? handleEmailClick(contact.value)
                             : handlePhoneClick(contact.value)
                         }
@@ -188,27 +202,23 @@ export const ClientEditDialog = ({ client, onClose, onUpdate }: ClientEditDialog
           </div>
         </div>
 
-        {/* Description */}
+        {/* Notes (local only for now) */}
         <div>
-          <Label htmlFor="description">Notes</Label>
+          <Label htmlFor="notes">Notes</Label>
           <Textarea
-            id="description"
-            value={formData.description}
-            onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+            id="notes"
+            value={formData.notes}
+            onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
             className="mt-1"
             rows={3}
-            placeholder="Additional notes about this client..."
+            placeholder="Additional notes about this client (not saved on client record)"
           />
         </div>
       </div>
 
       <DialogFooter>
-        <Button variant="outline" onClick={onClose}>
-          Cancel
-        </Button>
-        <Button onClick={handleSave}>
-          Save Changes
-        </Button>
+        <Button variant="outline" onClick={onClose}>Cancel</Button>
+        <Button onClick={handleSave}>Save Changes</Button>
       </DialogFooter>
     </DialogContent>
   );

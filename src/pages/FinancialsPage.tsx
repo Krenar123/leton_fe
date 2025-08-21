@@ -57,6 +57,7 @@ const FinancialsPage = () => {
 
   return (
     <FinancialsPageContent
+      projectRef={project.ref}
       estimatesActualsData={estimatesActualsData}
       documents={documents}
       tableSettings={tableSettings}

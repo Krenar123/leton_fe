@@ -111,6 +111,7 @@ export const FormStep = ({
     }
     
     onSave({
+      ...(editingItem?.ref ? { ref: editingItem.ref } : {}),
       item_line: formData.description,
       contractor: formData.vendor || undefined,
       estimated_cost: estimatedCost,
@@ -209,7 +210,7 @@ export const FormStep = ({
                   {existingItemLines
                     .filter(item => item.itemLine !== formData.description)
                     .map((item) => (
-                      <SelectItem key={item.itemLine} value={item.itemLine}>
+                      <SelectItem key={item.id} value={item.id}>
                         {item.itemLine}
                       </SelectItem>
                     ))}

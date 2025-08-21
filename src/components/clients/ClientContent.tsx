@@ -89,7 +89,7 @@ export const ClientContent = ({
     time: true
   });
 
-  const activeProjects = projects.filter(p => p.status === 'Active');
+  const activeProjects = client.currentProjects; //projects.filter(p => p.status === 'Active');
   const totalBillsValue = bills.reduce((sum, bill) => sum + bill.amount, 0);
   const paidBills = bills.reduce((sum, bill) => sum + bill.payments, 0);
   const nextMeeting = meetings.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())[0];
@@ -131,7 +131,7 @@ export const ClientContent = ({
       <div className="space-y-6">
         {/* Summary Cards and Notes */}
         <ClientSummaryCards 
-          activeProjects={activeProjects.length} 
+          activeProjects={activeProjects} 
           totalProjects={projects.length} 
           totalBillsValue={totalBillsValue} 
           paidBills={paidBills} 

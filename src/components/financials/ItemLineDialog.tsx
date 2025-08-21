@@ -5,11 +5,13 @@ import { EstimateActualItem } from "@/types/financials";
 import { ActionSelectionStep } from "./dialog-steps/ActionSelectionStep";
 import { LocationSelectionStep } from "./dialog-steps/LocationSelectionStep";
 import { FormStep } from "./dialog-steps/FormStep";
+import { useEffect } from "react";
 
 interface ItemLineDialogProps {
   isOpen: boolean;
   onClose: () => void;
   onSave: (itemLine: {
+    ref?: string;
     itemLine: string;
     contractor?: string;
     estimatedCost: number;
@@ -68,6 +70,50 @@ export const ItemLineDialog = ({
       status: editingItem?.status || 'not_started',
     }
   });
+
+  useEffect(() => {
+    // Only run when dialog opens or the editing item changes
+    if (!isOpen) return;
+  
+    if (editingItem) {
+      setCurrentStep('form'); // skip action/location when editing
+  
+      setDialogState({
+        actionType: 'add-item-line', // or whatever fits; not used during edit anyway
+        formData: {
+          description: editingItem.itemLine || "",
+          vendor: editingItem.contractor || "",
+          unit: editingItem.unit || "",
+          quantity: editingItem.quantity != null ? String(editingItem.quantity) : "",
+          pricePerUnit: editingItem.unitPrice != null ? String(editingItem.unitPrice) : "",
+          estimatedRevenue: editingItem.estimatedRevenue != null ? String(editingItem.estimatedRevenue) : "",
+          startDate: editingItem.startDate ? new Date(editingItem.startDate) : undefined,
+          dueDate: editingItem.dueDate ? new Date(editingItem.dueDate) : undefined,
+          dependsOn: editingItem.dependsOn || "none",
+          status: editingItem.status || 'not_started',
+        },
+      });
+    } else {
+      // If not editing, ensure the wizard starts fresh
+      setCurrentStep('action');
+      setDialogState({
+        actionType: null,
+        formData: {
+          description: "",
+          vendor: "",
+          unit: "",
+          quantity: "",
+          pricePerUnit: "",
+          estimatedRevenue: "",
+          startDate: undefined,
+          dueDate: undefined,
+          dependsOn: "none",
+          status: 'not_started',
+        },
+      });
+    }
+  }, [isOpen, editingItem]);
+  
 
   const handleReset = () => {
     setCurrentStep('action');

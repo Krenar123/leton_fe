@@ -9,6 +9,7 @@ interface ItemLineDialogProps {
   isOpen: boolean;
   onClose: () => void;
   onSave: (itemLine: {
+    ref?: string;
     item_line: string;
     contractor?: string;
     estimated_cost: number;

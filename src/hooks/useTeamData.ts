@@ -1,111 +1,103 @@
+// src/hooks/useTeamData.ts
+import { useMemo, useState } from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { createUser, fetchUsersWithFilters } from "@/services/api";
 
-import { useState, useMemo } from "react";
 
-// Mock team member data
-const initialTeamMembers = [
-  {
-    id: 1,
-    name: "John Smith",
-    position: "Project Manager",
-    department: "Management",
-    email: "john.smith@company.com",
-    phone: "+1 234 567 8901",
-    address: "123 Main St, City, State",
-    avatar: "JS"
-  },
-  {
-    id: 2,
-    name: "Sarah Johnson",
-    position: "Senior Engineer",
-    department: "Engineering",
-    email: "sarah.johnson@company.com",
-    phone: "+1 234 567 8902",
-    address: "456 Oak Ave, City, State",
-    avatar: "SJ"
-  },
-  {
-    id: 3,
-    name: "Mike Davis",
-    position: "Construction Manager",
-    department: "Construction",
-    email: "mike.davis@company.com",
-    phone: "+1 234 567 8903",
-    address: "789 Pine St, City, State",
-    avatar: "MD"
-  },
-  {
-    id: 4,
-    name: "Lisa Chen",
-    position: "Architect",
-    department: "Design",
-    email: "lisa.chen@company.com",
-    phone: "+1 234 567 8904",
-    address: "321 Elm St, City, State",
-    avatar: "LC"
-  },
-  {
-    id: 5,
-    name: "Robert Wilson",
-    position: "Site Supervisor",
-    department: "Construction",
-    email: "robert.wilson@company.com",
-    phone: "+1 234 567 8905",
-    address: "654 Maple Ave, City, State",
-    avatar: "RW"
-  },
-  {
-    id: 6,
-    name: "Emily Brown",
-    position: "Quality Inspector",
-    department: "Quality Assurance",
-    email: "emily.brown@company.com",
-    phone: "+1 234 567 8906",
-    address: "987 Cedar St, City, State",
-    avatar: "EB"
-  }
-];
+export type UIMember = {
+  id: string;           // <-- user ref
+  name: string;
+  position: string;
+  department: string;
+  email: string;
+  phone: string;
+  address: string;
+  avatar: string;       // initials
+};
 
 export const useTeamData = () => {
-  const [teamMembers, setTeamMembers] = useState(initialTeamMembers);
   const [searchTerm, setSearchTerm] = useState("");
   const [departmentFilter, setDepartmentFilter] = useState("all");
+  const qc = useQueryClient();
 
-  // Get unique departments for filter
-  const departments = useMemo(() => 
-    Array.from(new Set(teamMembers.map(member => member.department))), 
-    [teamMembers]
-  );
+  const { data, isLoading } = useQuery({
+    queryKey: ["users", { q: searchTerm, department: departmentFilter }],
+    queryFn: () => fetchUsersWithFilters(searchTerm, departmentFilter),
+  });
 
-  // Filter team members
-  const filteredMembers = useMemo(() => 
-    teamMembers.filter(member => {
-      const matchesSearch = member.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                           member.position.toLowerCase().includes(searchTerm.toLowerCase());
-      const matchesDepartment = departmentFilter === "all" || member.department === departmentFilter;
-      
-      return matchesSearch && matchesDepartment;
-    }), 
-    [teamMembers, searchTerm, departmentFilter]
-  );
+  console.log(data);
 
-  const addMember = (memberData: {
-    name: string;
-    position: string;
-    department: string;
-    email: string;
-    phone: string;
-    address: string;
+  // All members mapped from JSON:API
+  const members: UIMember[] = useMemo(() => {
+    const arr = Array.isArray(data?.data) ? data.data : [];
+    return arr.map((e: any) => {
+      const a = e.attributes || {};
+      const name = a.fullName || "";
+      return {
+        id: String(e.id), // serializer set_id :ref => this is the user ref
+        name,
+        position: a.position || "",
+        department: a.department || "",
+        email: a.email || "",
+        phone: a.phone || "",
+        address: a.address || "",
+        avatar: name.split(" ").map((n: string) => n[0]).join("").toUpperCase(),
+      };
+    });
+  }, [data]);
+
+  // Unique departments (client-side derived)
+  const departments = useMemo(() => {
+    const set = new Set<string>();
+    members.forEach(m => m.department && set.add(m.department));
+    return Array.from(set);
+  }, [members]);
+
+
+  console.log(members);
+
+
+  // Keep your page’s prop name: filteredMembers
+  const filteredMembers = useMemo(() => {
+    const q = searchTerm.trim().toLowerCase();
+    return members.filter(m => {
+      const matchesSearch =
+        !q ||
+        m.name.toLowerCase().includes(q) ||
+        m.position.toLowerCase().includes(q);
+      const matchesDept =
+        departmentFilter === "all" || m.department === departmentFilter;
+      return matchesSearch && matchesDept;
+    });
+  }, [members, searchTerm, departmentFilter]);
+
+  // Create member (requires backend to allow creating a user)
+  const { mutateAsync: addMemberMut } = useMutation({
+    mutationFn: (payload: {
+      full_name: string;
+      email: string;
+      position?: string;
+      department?: string;
+      phone?: string;
+      address?: string;
+      // password?: string; // only if your backend needs it and you allow client-side creation
+    }) => createUser(payload),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["users"] }),
+  });
+
+  const addMember = async (input: {
+    name: string; position: string; department: string;
+    email: string; phone: string; address: string;
   }) => {
-    const newId = Math.max(...teamMembers.map(m => m.id)) + 1;
-    const avatar = memberData.name.split(' ').map(n => n[0]).join('').toUpperCase();
-    
-    const newMember = {
-      id: newId,
-      ...memberData,
-      avatar
-    };
-    
-    setTeamMembers(prev => [...prev, newMember]);
+    await addMemberMut({
+      full_name: input.name,
+      email:     input.email,
+      position:  input.position,
+      department:input.department,
+      phone:     input.phone,
+      address:   input.address,
+      // password: "Temp1234!" // if needed
+    });
   };
 
   const clearFilters = () => {
@@ -116,14 +108,13 @@ export const useTeamData = () => {
   const hasActiveFilters = searchTerm !== "" || departmentFilter !== "all";
 
   return {
-    searchTerm,
-    setSearchTerm,
-    departmentFilter,
-    setDepartmentFilter,
+    isLoading,
+    searchTerm, setSearchTerm,
+    departmentFilter, setDepartmentFilter,
     departments,
     filteredMembers,
     clearFilters,
     hasActiveFilters,
-    addMember
+    addMember,
   };
 };

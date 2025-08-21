@@ -267,6 +267,110 @@ export async function createClient(clientData: any) {
   return response.json();
 }
 
+export async function updateClient(ref: string, data: any) {
+  const response = await fetch(`${API_BASE_URL}/clients/${ref}`, {
+    method: "PATCH",
+    headers: {
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({ client: data })
+  });
+
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.errors?.join(", ") || "Failed to update client");
+  }
+
+  return response.json();
+}
+
+export async function createClientNote(clientRef: string, noteData: any) {
+  const response = await fetch(`${API_BASE_URL}/clients/${clientRef}/notes`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ note: noteData })
+  });
+
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.message || "Failed to create client note");
+  }
+
+  return response.json();
+}
+
+export async function updateClientNote(clientRef: string, noteRef: string, noteData: any) {
+  const response = await fetch(`${API_BASE_URL}/clients/${clientRef}/notes/${noteRef}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ note: noteData })
+  });
+
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.message || "Failed to update client note");
+  }
+
+  return response.json();
+}
+
+export async function deleteClientNote(clientRef: string,  noteRef: string) {
+  const response = await fetch(`${API_BASE_URL}/clients/${clientRef}/notes/${noteRef}`, {
+    method: "DELETE" 
+  });
+
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.message || "Failed to delete client note");
+  }
+}
+
+export async function fetchClientNotes(clientRef: string) {
+  return fetchFromApi(`/clients/${clientRef}/notes`);
+}
+
+
+export async function createClientMeeting(clientRef: string, meetingData: any) {
+  const response = await fetch(`${API_BASE_URL}/clients/${clientRef}/meetings`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ meeting: meetingData })
+  });
+
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.message || "Failed to create client meeting");
+  }
+
+  return response.json();
+}
+
+export async function updateClientMeeting(clientRef: string, meetingRef: string, meetingData: any) {
+  const response = await fetch(`${API_BASE_URL}/clients/${clientRef}/meetings/${meetingRef}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ meeting: meetingData })
+  });
+
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.message || "Failed to update client meeting");
+  }
+
+  return response.json();
+}
+
+export async function deleteClientMeeting(clientRef: string,  meetingRef: string) {
+  const response = await fetch(`${API_BASE_URL}/clients/${clientRef}/meetings/${meetingRef}`, {
+    method: "DELETE" 
+  });
+
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.message || "Failed to delete client meeting");
+  }
+}
+
 
 // --------------------
 // Team-related APIs
@@ -274,6 +378,76 @@ export async function createClient(clientData: any) {
 
 export async function fetchUsers() {
   return fetchFromApi("/users");
+}
+
+export async function fetchUsersWithFilters(q: string, department: string) {
+  const params = new URLSearchParams();
+  if (q) params.set("q", q);
+  if (department && department !== "all") params.set("department", department);
+  const qs = params.toString();
+  return fetchFromApi(`/users${qs ? `?${qs}` : ""}`);
+}
+
+export async function fetchUserByRef(userRef: string) {
+  return fetchFromApi(`/users/${userRef}`);
+}
+
+export async function fetchUserObjectives(userRef: string) {
+  return fetchFromApi(`/users/${userRef}/projects`);
+}
+
+export async function fetchUserInvoices(userRef: string) {
+  return fetchFromApi(`/users/${userRef}/invoices`);
+}
+
+export async function fetchUserWagePayments(userRef: string) {
+  return fetchFromApi(`/users/${userRef}/bills`);
+}
+
+export async function fetchUserMeetings(userRef: string) {
+  return fetchFromApi(`/users/${userRef}/meetings`);
+}
+
+export async function fetchUserTasks(userRef: string) {
+  return fetchFromApi(`/users/${userRef}/tasks`);
+}
+
+export async function fetchUserNotes(userRef: string) {
+  return fetchFromApi(`/users/${userRef}/notes`);
+}
+
+export async function createUser(userData: any) {
+  const response = await fetch(`${API_BASE_URL}/users`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({ user: userData }) // wrap in `client:` as Rails expects
+  });
+
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.errors?.join(", ") || "Failed to create member");
+  }
+
+  return response.json();
+}
+
+export async function updateUser(ref: string, data: any) {
+  const response = await fetch(`${API_BASE_URL}/users/${ref}`, {
+    method: "PATCH",
+    headers: {
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({ user: data })
+  });
+
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.errors?.join(", ") || "Failed to update member");
+  }
+
+  return response.json();
 }
 
 // --------------------
@@ -302,6 +476,42 @@ export async function fetchSupplierBills(supplierRef: string) {
 
 export async function fetchSupplierMeetings(supplierRef: string) {
   return fetchFromApi(`/suppliers/${supplierRef}/meetings`);
+}
+
+
+
+export async function createSupplier(supplierData: any) {
+  const response = await fetch(`${API_BASE_URL}/suppliers`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({ supplier: supplierData }) // wrap in `client:` as Rails expects
+  });
+
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.errors?.join(", ") || "Failed to create supplier");
+  }
+
+  return response.json();
+}
+
+export async function updateSupplier(ref: string, data: any) {
+  const response = await fetch(`${API_BASE_URL}/suppliers/${ref}`, {
+    method: "PATCH",
+    headers: {
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({ supplier: data })
+  });
+
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.errors?.join(", ") || "Failed to update supplier");
+  }
+
+  return response.json();
 }
 
 

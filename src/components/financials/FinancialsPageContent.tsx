@@ -13,6 +13,7 @@ import { CreateInvoiceDialog } from "./CreateInvoiceDialog";
 import { EstimateActualItem, ViewMode, FinancialDocument, TableDisplaySettings } from "@/types/financials";
 
 interface FinancialsPageContentProps {
+  projectRef: string;
   estimatesActualsData: EstimateActualItem[];
   documents: FinancialDocument[];
   tableSettings: TableDisplaySettings;
@@ -35,6 +36,7 @@ interface FinancialsPageContentProps {
 }
 
 export const FinancialsPageContent = ({
+  projectRef,
   estimatesActualsData,
   documents,
   tableSettings,
@@ -48,6 +50,7 @@ export const FinancialsPageContent = ({
 }: FinancialsPageContentProps) => {
   // View mode state
   const [viewMode, setViewMode] = useState<ViewMode>('contract-amounts');
+
 
   // State for dialogs
   const [isItemLineDialogOpen, setIsItemLineDialogOpen] = useState(false);
@@ -79,6 +82,7 @@ export const FinancialsPageContent = ({
     }
   };
 
+  
   const handleAddItemLineInternal = (newItem: {
     itemLine: string;
     contractor?: string;
@@ -190,6 +194,7 @@ export const FinancialsPageContent = ({
 
       {/* Dialogs */}
       <FinancialsDialogs
+        projectRef={projectRef}
         isItemLineDialogOpen={isItemLineDialogOpen}
         onCloseItemLineDialog={handleCloseItemLineDialog}
         onSaveItemLine={handleAddItemLineInternal}

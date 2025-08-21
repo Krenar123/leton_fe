@@ -1,5 +1,4 @@
-
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -12,159 +11,113 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
 
-interface Meeting {
-  id: number;
-  topic: string;
+type Meeting = {
+  id: number | string;
+  title: string;          // unified
   withWho: string;
-  ourCompanyPerson: string;
-  day: string;
-  time: string;
+  ourPerson: string;      // unified
+  day: string;            // YYYY-MM-DD
+  time: string;           // HH:mm (24h)
   location: string;
-  type: "upcoming" | "past";
-  isPast: boolean;
-}
+};
 
 interface MeetingsDialogProps {
   projectName: string;
   onClose: () => void;
 }
 
+// unified mock data
 const initialMockMeetings: Meeting[] = [
-  {
-    id: 1,
-    topic: "Client Review",
-    withWho: "ABC Corp - John Smith",
-    ourCompanyPerson: "Sarah Johnson",
-    day: "2024-07-07",
-    time: "14:00",
-    location: "Conference Room A",
-    type: "upcoming",
-    isPast: false
-  },
-  {
-    id: 2,
-    topic: "Team Standup",
-    withWho: "Internal Team",
-    ourCompanyPerson: "Mike Davis",
-    day: "2024-07-08",
-    time: "09:00",
-    location: "Teams Meeting",
-    type: "upcoming",
-    isPast: false
-  },
-  {
-    id: 3,
-    topic: "Budget Review",
-    withWho: "ABC Corp - Finance Team",
-    ourCompanyPerson: "Anna Wilson",
-    day: "2024-07-10",
-    time: "15:30",
-    location: "Client Office",
-    type: "upcoming",
-    isPast: false
-  },
-  {
-    id: 4,
-    topic: "Project Kickoff",
-    withWho: "ABC Corp - Project Team",
-    ourCompanyPerson: "Tom Brown",
-    day: "2024-01-15",
-    time: "10:00",
-    location: "Conference Room B",
-    type: "past",
-    isPast: true
-  },
-  {
-    id: 5,
-    topic: "Design Presentation",
-    withWho: "ABC Corp - Design Team",
-    ourCompanyPerson: "Lisa Green",
-    day: "2024-03-20",
-    time: "13:00",
-    location: "Zoom Meeting",
-    type: "past",
-    isPast: true
-  }
+  { id: 1, title: "Client Review",       withWho: "ABC Corp - John Smith",   ourPerson: "Sarah Johnson", day: "2024-07-07", time: "14:00", location: "Conference Room A" },
+  { id: 2, title: "Team Standup",        withWho: "Internal Team",           ourPerson: "Mike Davis",    day: "2024-07-08", time: "09:00", location: "Teams Meeting" },
+  { id: 3, title: "Budget Review",       withWho: "ABC Corp - Finance Team", ourPerson: "Anna Wilson",   day: "2024-07-10", time: "15:30", location: "Client Office" },
+  { id: 4, title: "Project Kickoff",     withWho: "ABC Corp - Project Team", ourPerson: "Tom Brown",     day: "2024-01-15", time: "10:00", location: "Conference Room B" },
+  { id: 5, title: "Design Presentation", withWho: "ABC Corp - Design Team",  ourPerson: "Lisa Green",    day: "2024-03-20", time: "13:00", location: "Zoom Meeting" },
 ];
 
-export const MeetingsDialog = ({ projectName, onClose }: MeetingsDialogProps) => {
+export const MeetingsDialog = ({ projectName }: MeetingsDialogProps) => {
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState<"all" | "planned" | "finished">("all");
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [meetings, setMeetings] = useState<Meeting[]>(initialMockMeetings);
   const [isFilterOpen, setIsFilterOpen] = useState(false);
-  
-  const filteredMeetings = meetings.filter(meeting => {
-    // Apply search filter
-    const matchesSearch = searchTerm === "" || 
-      meeting.topic.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      meeting.withWho.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      meeting.ourCompanyPerson.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      meeting.location.toLowerCase().includes(searchTerm.toLowerCase());
 
-    // Apply status filter
-    const matchesStatus = statusFilter === "all" || 
-      (statusFilter === "planned" && !meeting.isPast) ||
-      (statusFilter === "finished" && meeting.isPast);
+  const isPast = (m: Meeting) => new Date(`${m.day} ${m.time}`) < new Date();
 
-    return matchesSearch && matchesStatus;
-  }).sort((a, b) => {
-    // Sort by date and time with upcoming meetings on top
-    const dateA = new Date(a.day + " " + a.time);
-    const dateB = new Date(b.day + " " + b.time);
+  const filteredMeetings = useMemo(() => {
     const now = new Date();
-    
-    const isAUpcoming = dateA >= now;
-    const isBUpcoming = dateB >= now;
-    
-    // Upcoming meetings first, then sort by date
-    if (isAUpcoming && !isBUpcoming) return -1;
-    if (!isAUpcoming && isBUpcoming) return 1;
-    
-    if (isAUpcoming && isBUpcoming) {
-      return dateA.getTime() - dateB.getTime(); // Earliest upcoming first
-    } else {
-      return dateB.getTime() - dateA.getTime(); // Latest finished first  
-    }
-  });
+    const matches = meetings.filter(m => {
+      const matchesSearch =
+        !searchTerm ||
+        m.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        m.withWho.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        m.ourPerson.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        m.location.toLowerCase().includes(searchTerm.toLowerCase());
+
+      const past = new Date(`${m.day} ${m.time}`) < now;
+      const matchesStatus =
+        statusFilter === "all" ||
+        (statusFilter === "planned" && !past) ||
+        (statusFilter === "finished" && past);
+
+      return matchesSearch && matchesStatus;
+    });
+
+    // sort: upcoming first (earliest first), then past (latest first)
+    return matches.sort((a, b) => {
+      const da = new Date(`${a.day} ${a.time}`);
+      const db = new Date(`${b.day} ${b.time}`);
+      const aUpcoming = da >= now;
+      const bUpcoming = db >= now;
+      if (aUpcoming && !bUpcoming) return -1;
+      if (!aUpcoming && bUpcoming) return 1;
+      return aUpcoming ? da.getTime() - db.getTime() : db.getTime() - da.getTime();
+    });
+  }, [meetings, searchTerm, statusFilter]);
 
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
     const today = new Date();
     const tomorrow = new Date();
     tomorrow.setDate(today.getDate() + 1);
-    
-    if (date.toDateString() === today.toDateString()) {
-      return "Today";
-    } else if (date.toDateString() === tomorrow.toDateString()) {
-      return "Tomorrow";
-    } else {
-      return date.toLocaleDateString('en-US', {
-        month: 'short',
-        day: 'numeric',
-        year: date.getFullYear() !== today.getFullYear() ? 'numeric' : undefined
-      });
-    }
+
+    if (date.toDateString() === today.toDateString()) return "Today";
+    if (date.toDateString() === tomorrow.toDateString()) return "Tomorrow";
+    return date.toLocaleDateString("en-US", {
+      month: "short",
+      day: "numeric",
+      year: date.getFullYear() !== today.getFullYear() ? "numeric" : undefined,
+    });
   };
 
-  const handleCreateMeeting = (meetingData: any) => {
-    const newMeeting: Meeting = {
-      ...meetingData,
+  // Always normalize created data into our Meeting shape
+  const handleCreateMeeting = (data: any) => {
+    // Accept flexible inputs from CreateMeetingDialog and normalize:
+    const normalized: Meeting = {
       id: Date.now(),
-      type: "upcoming" as const,
-      isPast: false
+      title: data.title ?? data.topic ?? "Untitled",
+      withWho: data.withWho ?? data.clientName ?? "—",
+      ourPerson: data.ourPerson ?? data.ourCompanyPerson ?? "—",
+      // prefer “meeting_date” ISO or separate day/time
+      day: data.day ?? (data.meeting_date ? new Date(data.meeting_date).toISOString().slice(0, 10) : ""),
+      time:
+        data.time ??
+        (data.meeting_date
+          ? new Date(data.meeting_date).toISOString().slice(11, 16) // HH:mm
+          : ""),
+      location: data.location ?? data.link ?? "—",
     };
-    
-    setMeetings(prev => [...prev, newMeeting]);
+
+    setMeetings(prev => [...prev, normalized]);
     setIsCreateDialogOpen(false);
-    console.log('New meeting created and added to list:', newMeeting);
+    console.log("New meeting (normalized):", normalized);
   };
 
   const filterContent = (
     <div className="space-y-4">
       <div className="space-y-3">
         <Label className="text-sm font-medium">Filter by Status</Label>
-        <RadioGroup value={statusFilter} onValueChange={(value: "all" | "planned" | "finished") => setStatusFilter(value)}>
+        <RadioGroup value={statusFilter} onValueChange={(v: "all" | "planned" | "finished") => setStatusFilter(v)}>
           <div className="flex items-center space-x-2">
             <RadioGroupItem value="all" id="all" />
             <Label htmlFor="all" className="text-sm">All meetings</Label>
@@ -190,27 +143,23 @@ export const MeetingsDialog = ({ projectName, onClose }: MeetingsDialogProps) =>
         <DialogHeader>
           <DialogTitle>Meetings - {projectName}</DialogTitle>
         </DialogHeader>
-        
+
         <div className="space-y-4">
-          {/* Search and Filter Controls */}
+          {/* Search & Filters */}
           <div className="flex items-center gap-4">
             <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
               <Input
                 value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
+                onChange={e => setSearchTerm(e.target.value)}
                 placeholder="Search meetings..."
                 className="pl-10"
               />
             </div>
-            
+
             <Popover open={isFilterOpen} onOpenChange={setIsFilterOpen}>
               <PopoverTrigger asChild>
-                <Button 
-                  variant="ghost" 
-                  size="sm" 
-                  className={`text-gray-600 hover:bg-gray-100 ${hasActiveFilters ? 'text-blue-600' : ''}`}
-                >
+                <Button variant="ghost" size="sm" className={`text-gray-600 hover:bg-gray-100 ${hasActiveFilters ? "text-blue-600" : ""}`}>
                   <Filter className="w-4 h-4" />
                 </Button>
               </PopoverTrigger>
@@ -226,19 +175,19 @@ export const MeetingsDialog = ({ projectName, onClose }: MeetingsDialogProps) =>
                   Create Meeting
                 </Button>
               </DialogTrigger>
-              <CreateMeetingDialog 
+              <CreateMeetingDialog
                 onCreateMeeting={handleCreateMeeting}
                 onClose={() => setIsCreateDialogOpen(false)}
               />
             </Dialog>
           </div>
 
-          {/* Meetings Table */}
+          {/* Table */}
           <div className="border rounded-lg">
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Topic</TableHead>
+                  <TableHead>Title</TableHead>
                   <TableHead>With Who</TableHead>
                   <TableHead>Our Person</TableHead>
                   <TableHead>Day</TableHead>
@@ -247,20 +196,18 @@ export const MeetingsDialog = ({ projectName, onClose }: MeetingsDialogProps) =>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filteredMeetings.map((meeting) => (
-                  <TableRow key={meeting.id}>
-                    <TableCell className="font-medium">
-                      {meeting.topic}
-                    </TableCell>
-                    <TableCell>{meeting.withWho}</TableCell>
-                    <TableCell>{meeting.ourCompanyPerson}</TableCell>
+                {filteredMeetings.map(m => (
+                  <TableRow key={m.id}>
+                    <TableCell className="font-medium">{m.title}</TableCell>
+                    <TableCell>{m.withWho}</TableCell>
+                    <TableCell>{m.ourPerson}</TableCell>
                     <TableCell>
-                      <Badge variant={meeting.isPast ? "secondary" : "default"}>
-                        {formatDate(meeting.day)}
+                      <Badge variant={isPast(m) ? "secondary" : "default"}>
+                        {m.day ? formatDate(m.day) : "—"}
                       </Badge>
                     </TableCell>
-                    <TableCell className="font-medium">{meeting.time}</TableCell>
-                    <TableCell>{meeting.location}</TableCell>
+                    <TableCell className="font-medium">{m.time || "—"}</TableCell>
+                    <TableCell>{m.location || "—"}</TableCell>
                   </TableRow>
                 ))}
               </TableBody>

@@ -27,7 +27,8 @@ export const ClientDialogs = ({
   return (
     <>
       <Dialog open={isNotesDialogOpen} onOpenChange={setIsNotesDialogOpen}>
-        <ClientNotesDialog 
+        <ClientNotesDialog
+          clientRef={client.ref}
           clientName={client.name}
           onClose={() => setIsNotesDialogOpen(false)}
         />
@@ -41,7 +42,8 @@ export const ClientDialogs = ({
       </Dialog>
 
       <Dialog open={isMeetingsDialogOpen} onOpenChange={setIsMeetingsDialogOpen}>
-        <ClientMeetingsDialog 
+        <ClientMeetingsDialog
+          clientRef={client.ref}
           clientName={client.company}
           onClose={() => setIsMeetingsDialogOpen(false)}
         />
