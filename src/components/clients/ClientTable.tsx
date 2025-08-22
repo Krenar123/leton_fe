@@ -9,6 +9,7 @@ interface ClientTableProps {
 }
 
 const ClientTable = ({ clients, columnVisibility }: ClientTableProps) => {
+  
   const navigate = useNavigate();
 
   const formatCurrency = (amount: number) => {

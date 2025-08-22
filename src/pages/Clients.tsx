@@ -36,13 +36,14 @@ const Clients = () => {
     queryFn: fetchClients,
   });
 
+
   // 2) map raw -> flat array (ref/id + attributes)
   const clients: any[] = useMemo(() => {
     const arr = Array.isArray(clientsRaw?.data) ? clientsRaw.data : [];
     return arr.map((entry: any) => {
       const a = entry.attributes || {};
       return {
-        ref: entry.id,
+        ref: a.ref,
         id: entry.id,
         company: a.company,
         contactName: a.contactName,
