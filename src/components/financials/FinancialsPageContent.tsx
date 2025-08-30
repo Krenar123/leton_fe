@@ -1,4 +1,4 @@
-
+// FinancialsPageContent.tsx
 import { useState } from "react";
 import { Card } from "@/components/ui/card";
 import { CashFlowGraph } from "./CashFlowGraph";
@@ -10,7 +10,14 @@ import { FinancialsDialogs } from "./FinancialsDialogs";
 import { UploadInvoiceDialog } from "./UploadInvoiceDialog";
 import { PaymentReceivedDialog } from "./PaymentReceivedDialog";
 import { CreateInvoiceDialog } from "./CreateInvoiceDialog";
-import { EstimateActualItem, ViewMode, FinancialDocument, TableDisplaySettings } from "@/types/financials";
+import { CreateBillDialog } from "./CreateBillDialog";
+import { BillPaidDialog } from "./BillPaidDialog";
+import {
+  EstimateActualItem,
+  ViewMode,
+  FinancialDocument,
+  TableDisplaySettings,
+} from "@/types/financials";
 
 interface FinancialsPageContentProps {
   projectRef: string;
@@ -18,6 +25,8 @@ interface FinancialsPageContentProps {
   documents: FinancialDocument[];
   tableSettings: TableDisplaySettings;
   onTableSettingsChange: (settings: TableDisplaySettings) => void;
+
+  // existing
   onAddItemLine: (newItem: {
     itemLine: string;
     contractor?: string;
@@ -25,14 +34,77 @@ interface FinancialsPageContentProps {
     estimatedRevenue: number;
     startDate?: string;
     dueDate?: string;
-    dependsOn?: string;
-    status: 'not_started' | 'in_progress' | 'completed' | 'on-hold';
+    dependsOn?: string | number;
+    status: "not_started" | "in_progress" | "completed" | "on-hold";
   }) => void;
-  onAddInvoicePayment: (itemLine: string, type: 'invoice' | 'bill-paid' | 'invoice-paid' | 'bill', amount: number, expectedDate: string, file?: File) => void;
-  onItemLineAction: (itemLine: string, action: 'invoice' | 'bill-paid' | 'invoice-paid' | 'bill' | 'details' | 'edit' | 'delete' | 'complete') => EstimateActualItem | null;
+  onItemLineAction: (
+    itemLine: string,
+    action:
+      | "invoice"
+      | "bill-paid"
+      | "invoice-paid"
+      | "bill"
+      | "details"
+      | "edit"
+      | "delete"
+      | "complete"
+  ) => EstimateActualItem | null;
   getDocumentsForItemLine: (itemLine: string) => FinancialDocument[];
   onDeleteDocument: (documentId: string) => void;
   onRenameDocument: (documentId: string, newName: string) => void;
+
+  // NEW: plug these from your container (uses useFinancialsData or services/api)
+  addInvoice: (args: {
+    projectRef: string;
+    item_line_id: number;
+    amount: number;
+    issue_date?: string;
+    due_date?: string;
+    tax_amount?: number;
+    total_amount?: number;
+    invoice_number?: string;
+    status?: string;
+  }) => Promise<void>;
+
+  addPayment: (
+    projectRef: string,
+    invoiceRef: string,
+    args: {
+      amount: number;
+      payment_date?: string;
+      payment_method?: string;
+      reference_number?: string;
+      notes?: string;
+    }
+  ) => Promise<void>;
+
+  // Used by PaymentReceivedDialog to list invoices
+  loadProjectInvoices: (projectRef: string) => Promise<any>;
+
+  addBill: (args: {
+    projectRef: string;
+    item_line_id: number;
+    amount: number;
+    issue_date?: string;
+    due_date?: string;
+    tax_amount?: number;
+    total_amount?: number;
+    bill_number?: string;
+    status?: string;
+  }) => Promise<void>;
+
+  loadProjectBills: (projectRef: string) => Promise<any>;
+  addBillPayment: (
+    projectRef: string,
+    billRef: string,
+    args: {
+      amount: number;
+      payment_date?: string;
+      payment_method?: string;
+      reference_number?: string;
+      notes?: string;
+    }
+  ) => Promise<void>;
 }
 
 export const FinancialsPageContent = ({
@@ -42,17 +114,20 @@ export const FinancialsPageContent = ({
   tableSettings,
   onTableSettingsChange,
   onAddItemLine,
-  onAddInvoicePayment,
   onItemLineAction,
   getDocumentsForItemLine,
   onDeleteDocument,
   onRenameDocument,
+  addInvoice,            // <- here
+  addPayment,            // <- here
+  loadProjectInvoices,   // <- here
+  addBill,
+  loadProjectBills,
+  addBillPayment,
 }: FinancialsPageContentProps) => {
-  // View mode state
-  const [viewMode, setViewMode] = useState<ViewMode>('contract-amounts');
+  const [viewMode, setViewMode] = useState<ViewMode>("contract-amounts");
 
-
-  // State for dialogs
+  // dialogs
   const [isItemLineDialogOpen, setIsItemLineDialogOpen] = useState(false);
   const [isAddInvoicePaymentDialogOpen, setIsAddInvoicePaymentDialogOpen] = useState(false);
   const [isHistoryDialogOpen, setIsHistoryDialogOpen] = useState(false);
@@ -61,19 +136,33 @@ export const FinancialsPageContent = ({
   const [isCreateInvoiceDialogOpen, setIsCreateInvoiceDialogOpen] = useState(false);
   const [selectedItemLine, setSelectedItemLine] = useState<string>("");
   const [editingItem, setEditingItem] = useState<EstimateActualItem | undefined>(undefined);
-  const [actionType, setActionType] = useState<'invoice' | 'bill-paid' | 'invoice-paid' | 'bill'>('invoice');
+  const [isCreateBillDialogOpen, setIsCreateBillDialogOpen] = useState(false);
+  const [isBillPaidDialogOpen, setIsBillPaidDialogOpen] = useState(false);
+  const [actionType, setActionType] =
+    useState<"invoice" | "bill-paid" | "invoice-paid" | "bill">("invoice");
 
-  const handleItemLineActionInternal = (itemLine: string, action: 'invoice' | 'bill-paid' | 'invoice-paid' | 'bill' | 'details' | 'edit' | 'delete' | 'complete') => {
-    if (action === 'details') {
+  const handleItemLineActionInternal = (
+    itemLine: string,
+    action:
+      | "invoice"
+      | "bill-paid"
+      | "invoice-paid"
+      | "bill"
+      | "details"
+      | "edit"
+      | "delete"
+      | "complete"
+  ) => {
+    if (action === "details") {
       setSelectedItemLine(itemLine);
       setIsHistoryDialogOpen(true);
-    } else if (action === 'edit') {
+    } else if (action === "edit") {
       const item = onItemLineAction(itemLine, action);
       if (item) {
         setEditingItem(item);
         setIsItemLineDialogOpen(true);
       }
-    } else if (action === 'delete' || action === 'complete') {
+    } else if (action === "delete" || action === "complete") {
       onItemLineAction(itemLine, action);
     } else {
       setSelectedItemLine(itemLine);
@@ -82,7 +171,6 @@ export const FinancialsPageContent = ({
     }
   };
 
-  
   const handleAddItemLineInternal = (newItem: {
     itemLine: string;
     contractor?: string;
@@ -90,8 +178,8 @@ export const FinancialsPageContent = ({
     estimatedRevenue: number;
     startDate?: string;
     dueDate?: string;
-    dependsOn?: string;
-    status: 'not_started' | 'in_progress' | 'completed' | 'on-hold';
+    dependsOn?: string | number;
+    status: "not_started" | "in_progress" | "completed" | "on-hold";
   }) => {
     onAddItemLine(newItem);
     setEditingItem(undefined);
@@ -103,96 +191,140 @@ export const FinancialsPageContent = ({
     setEditingItem(undefined);
   };
 
-  const handleOpenAddItemLineDialog = () => {
-    console.log("Opening Add Item Line dialog");
-    setIsItemLineDialogOpen(true);
-  };
+  // toolbar buttons
+  const handleAddInvoice = () => setIsCreateInvoiceDialogOpen(true);
+  const handlePaymentReceived = () => setIsPaymentReceivedDialogOpen(true);
+  const handleAddBill     = () => setIsCreateBillDialogOpen(true);
+  const handleBillPaid    = () => setIsBillPaidDialogOpen(true);
+  const handleAddTeamCost = () => {};
 
-  // Handler functions for different button actions
-  const handleAddInvoice = () => {
-    console.log("Add Invoice clicked");
-    setIsCreateInvoiceDialogOpen(true);
-  };
-
-  const handlePaymentReceived = () => {
-    console.log("Payment Received clicked");
-    setIsPaymentReceivedDialogOpen(true);
-  };
-
-  const handleAddBill = () => {
-    console.log("Add Bill clicked");
-    // TODO: Implement add bill functionality
-  };
-
-  const handleBillPaid = () => {
-    console.log("Bill Paid clicked");
-    // TODO: Implement bill paid functionality
-  };
-
-  const handleAddTeamCost = () => {
-    console.log("Add Team Cost clicked");
-    // TODO: Implement add team cost functionality
-  };
-
-  const handleUploadInvoice = (file: File, itemLines: string[], amounts: number[], invoiceDate: string, dueDate: string) => {
-    console.log("Uploading invoice:", { file, itemLines, amounts, invoiceDate, dueDate });
-    // TODO: Process the invoice upload
+  // upload
+  const handleUploadInvoice = (
+    file: File,
+    itemLines: string[],
+    amounts: number[],
+    invoiceDate: string,
+    dueDate: string
+  ) => {
+    // optional: batch create invoices here
     setIsUploadInvoiceDialogOpen(false);
   };
 
-  const handlePaymentReceivedSubmit = (invoiceId: string, amount: number, paymentDate: string) => {
-    console.log("Processing payment:", { invoiceId, amount, paymentDate });
-    // TODO: Process the payment
+  // ←—— where addPayment is called
+  const handlePaymentReceivedSubmit = async (
+    invoiceRef: string,
+    amount: number,
+    paymentDate: string
+  ) => {
+    await addPayment(projectRef, invoiceRef, {
+      amount,
+      payment_date: paymentDate,
+    });
     setIsPaymentReceivedDialogOpen(false);
   };
 
-  const handleCreateInvoice = (selectedItems: { costCode: string; itemLine: string; amount: number }[]) => {
-    console.log("Creating invoice for items:", selectedItems);
-    // Just close the dialog for now - invoice creation will be implemented later
+  // ←—— where addInvoice is called
+  const handleCreateInvoice = async (
+    selectedItems: { costCode: string; itemLine: string; amount: number, invoiceNumber: string; }[]
+  ) => {
+    const first = selectedItems[0];
+    if (!first) return;
+
+    // map itemLine text to its id for item_line_id
+    const target = estimatesActualsData.find((i) => i.itemLine === first.itemLine);
+    if (!target?.id) return;
+
+    await addInvoice({
+      projectRef,
+      item_line_id: Number(target.id),
+      amount: first.amount,
+      invoice_number: first.invoiceNumber
+      // issue_date, due_date... can be added when your dialog collects them
+    });
+
     setIsCreateInvoiceDialogOpen(false);
+  };
+
+  const handleCreateBill = async (
+    selectedItems: { costCode: string; itemLine: string; amount: number, billNumber: string; }[]
+  ) => {
+    const first = selectedItems[0];
+    if (!first) return;
+
+    // map itemLine text to its id for item_line_id
+    const target = estimatesActualsData.find((i) => i.itemLine === first.itemLine);
+    if (!target?.id) return;
+
+    await addBill({
+      projectRef,
+      item_line_id: Number(target.id),
+      amount: first.amount,
+      bill_number: first.billNumber
+      // issue_date, due_date... can be added when your dialog collects them
+    });
+
+    setIsCreateBillDialogOpen(false);
+  };
+  
+  const handleBillPaidSubmit = async (
+    billRef: string,
+    amount: number,
+    paymentDate: string
+  ) => {
+    await addBillPayment(projectRef, billRef, {
+      amount,
+      payment_date: paymentDate,
+    });
+    setIsBillPaidDialogOpen(false);
   };
 
   return (
     <div className="space-y-6 min-h-screen pb-8 px-6">
-      {/* Cash Flow Graph Section */}
       <CashFlowGraph documents={documents} />
 
-      {/* Financial Overview and Table Section */}
       <Card className="border border-border bg-card shadow-sm">
         <div className="p-4 space-y-4">
-          {/* Financial Overview Blocks */}
-          <FinancialOverviewBlocks 
+          <FinancialOverviewBlocks
             estimatesActualsData={estimatesActualsData}
             viewMode={viewMode}
             onViewModeChange={setViewMode}
           />
 
-          {/* Financial Table or Team Costs Table */}
-          {viewMode === 'team-cost' ? (
+          {viewMode === "team-cost" ? (
             <TeamCostsTable />
-          ) : viewMode === 'contract-amounts' || viewMode === 'invoiced-paid' || viewMode === 'cost-tracking' ? (
-            <HierarchicalFinancialTable 
+          ) : viewMode === "contract-amounts" ||
+            viewMode === "invoiced-paid" ||
+            viewMode === "cost-tracking" ? (
+            <HierarchicalFinancialTable
               viewMode={viewMode}
               data={estimatesActualsData}
-              onAddItemLine={handleOpenAddItemLineDialog}
+              onAddItemLine={() => setIsItemLineDialogOpen(true)}
+              onAddInvoice={handleAddInvoice}                 // ← add
+              onPaymentReceived={handlePaymentReceived} 
               onItemLineAction={handleItemLineActionInternal}
               tableSettings={tableSettings}
               onTableSettingsChange={onTableSettingsChange}
+              onAddBill={handleAddBill}                 // ← add
+              onBillPaymentReceived={handleBillPaid} 
             />
           ) : (
-            <ConsistentFinancialTable 
+            <ConsistentFinancialTable
               viewMode={viewMode}
               data={estimatesActualsData}
-              onAddItemLine={handleOpenAddItemLineDialog}
+              onAddItemLine={() => setIsItemLineDialogOpen(true)}
+              onAddInvoice={handleAddInvoice}                 // ← add
+              onPaymentReceived={handlePaymentReceived} 
               onItemLineAction={handleItemLineActionInternal}
               tableSettings={tableSettings}
               onTableSettingsChange={onTableSettingsChange}
+              onAddBill={handleAddBill}                 // ← add
+              onBillPaymentReceived={handleBillPaid} 
             />
           )}
         </div>
       </Card>
 
-      {/* Dialogs */}
+      {/* Item line CRUD + history */}
       <FinancialsDialogs
         projectRef={projectRef}
         isItemLineDialogOpen={isItemLineDialogOpen}
@@ -204,34 +336,55 @@ export const FinancialsPageContent = ({
         onCloseAddInvoicePaymentDialog={() => setIsAddInvoicePaymentDialogOpen(false)}
         selectedItemLine={selectedItemLine}
         actionType={actionType}
-        onSaveInvoicePayment={onAddInvoicePayment}
         isHistoryDialogOpen={isHistoryDialogOpen}
         onCloseHistoryDialog={() => setIsHistoryDialogOpen(false)}
         documents={getDocumentsForItemLine(selectedItemLine)}
         onDeleteDocument={onDeleteDocument}
         onRenameDocument={onRenameDocument}
+        onAfterMutation={() => refetch()}   // <— ensure invoiced/paid totals update
       />
 
-      {/* New Dialogs */}
+
+      {/* Upload (optional) */}
       <UploadInvoiceDialog
         isOpen={isUploadInvoiceDialogOpen}
         onClose={() => setIsUploadInvoiceDialogOpen(false)}
         onUpload={handleUploadInvoice}
-        itemLines={estimatesActualsData.map(item => item.itemLine)}
+        itemLines={estimatesActualsData.map((item) => item.itemLine)}
       />
 
+      {/* Payment Received — loads invoices via prop & calls addPayment */}
       <PaymentReceivedDialog
         isOpen={isPaymentReceivedDialogOpen}
         onClose={() => setIsPaymentReceivedDialogOpen(false)}
+        projectRef={projectRef}
+        loadInvoices={loadProjectInvoices}
         onPayment={handlePaymentReceivedSubmit}
-        invoices={documents.filter(doc => doc.type === 'invoice')}
+        // If you want to pre-filter to the selected row:
+        // itemLineIdFilter={estimatesActualsData.find(i => i.itemLine === selectedItemLine)?.id as number}
       />
 
+      {/* Create Invoice — maps selected item line → item_line_id & calls addInvoice */}
       <CreateInvoiceDialog
         isOpen={isCreateInvoiceDialogOpen}
         onClose={() => setIsCreateInvoiceDialogOpen(false)}
         onCreateInvoice={handleCreateInvoice}
         estimatesActualsData={estimatesActualsData}
+      />
+
+      <CreateBillDialog
+        isOpen={isCreateBillDialogOpen}
+        onClose={() => setIsCreateBillDialogOpen(false)}
+        onCreateBill={handleCreateBill}
+        estimatesActualsData={estimatesActualsData}
+      />
+
+      <BillPaidDialog
+        isOpen={isBillPaidDialogOpen}
+        onClose={() => setIsBillPaidDialogOpen(false)}
+        projectRef={projectRef}
+        loadBills={loadProjectBills}
+        onPayment={(billRef, amount, date) => handleBillPaidSubmit(billRef, amount, date)}
       />
     </div>
   );

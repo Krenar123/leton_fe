@@ -184,8 +184,6 @@ export const ItemLineDialog = ({
             return 'Add Category';
           case 'add-item-line':
             return 'Add Item Line';
-          case 'add-vendor':
-            return 'Add Vendor to Item Line';
           default:
             return 'Add New Item';
         }

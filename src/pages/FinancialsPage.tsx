@@ -27,6 +27,12 @@ const FinancialsPage = () => {
     setSelectedItemLine,
     actionType,
     setActionType,
+    addInvoice,
+    addPayment,
+    loadProjectInvoices,
+    addBill,
+    loadProjectBills,
+    addBillPayment,
   } = useFinancialsData();
 
   // Handle quick actions from navigation state
@@ -63,11 +69,16 @@ const FinancialsPage = () => {
       tableSettings={tableSettings}
       onTableSettingsChange={setTableSettings}
       onAddItemLine={handleAddItemLine}
-      onAddInvoicePayment={handleAddInvoicePayment}
       onItemLineAction={handleItemLineAction}
       getDocumentsForItemLine={getDocumentsForItemLine}
       onDeleteDocument={handleDeleteDocument}
       onRenameDocument={handleRenameDocument}
+      addInvoice={addInvoice}
+      addPayment={addPayment}
+      loadProjectInvoices={loadProjectInvoices}
+      addBill={addBill}
+      loadProjectBills={loadProjectBills}
+      addBillPayment={addBillPayment}
     />
   );
 };

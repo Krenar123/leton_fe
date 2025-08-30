@@ -31,17 +31,25 @@ interface HierarchicalFinancialTableProps {
     itemLine: string,
     action: "invoice" | "bill-paid" | "invoice-paid" | "bill" | "details" | "edit" | "delete" | "complete"
   ) => void;
+  onAddInvoice?: () => void;             // ← new
+  onPaymentReceived?: () => void; 
   tableSettings: TableDisplaySettings;
   onTableSettingsChange: (settings: TableDisplaySettings) => void;
+  onAddBill?: () => void;             // ← new
+  onBillPaymentReceived?: () => void; 
 }
 
 export const HierarchicalFinancialTable = ({
   viewMode,
   data,
   onAddItemLine,
+  onAddInvoice,                 // ← new
+  onPaymentReceived,
   onItemLineAction,
   tableSettings,
   onTableSettingsChange,
+  onAddBill,
+  onBillPaymentReceived,
 }: HierarchicalFinancialTableProps) => {
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
@@ -160,8 +168,8 @@ export const HierarchicalFinancialTable = ({
         return (
           <>
             <TableCell className="text-right flex-1">{formatCurrency(estimatedCost)}</TableCell>
-            <TableCell className="text-right flex-1">{formatCurrency(item.actualCost || 0)}</TableCell>
-            <TableCell className="text-right flex-1">{formatCurrency(item.paid || 0)}</TableCell>
+            <TableCell className="text-right flex-1">{formatCurrency(item.billed || 0)}</TableCell>
+            <TableCell className="text-right flex-1">{formatCurrency(item.payments || 0)}</TableCell>
           </>
         );
   
@@ -200,6 +208,10 @@ export const HierarchicalFinancialTable = ({
           onStatusFilterChange={setStatusFilter}
           onSettingsClick={() => setIsSettingsOpen(true)}
           onAddItemLine={onAddItemLine}
+          onAddInvoice={onAddInvoice}
+          onPaymentReceived={onPaymentReceived}
+          onAddBill={onAddBill}
+          onBillPaymentReceived={onBillPaymentReceived}
         />
       </div>
       <div className="overflow-hidden">

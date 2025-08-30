@@ -1,3 +1,4 @@
+// src/components/projects/MeetingsDialog.tsx
 import { useMemo, useState } from "react";
 import { DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -10,51 +11,45 @@ import { Input } from "@/components/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
+import { useProjectMeetings } from "@/hooks/useProjectMeetings";
 
 type Meeting = {
-  id: number | string;
-  title: string;          // unified
+  id: string | number;
+  title: string;
   withWho: string;
-  ourPerson: string;      // unified
-  day: string;            // YYYY-MM-DD
-  time: string;           // HH:mm (24h)
+  ourPerson: string;
+  day: string;   // YYYY-MM-DD
+  time: string;  // HH:mm
   location: string;
 };
 
 interface MeetingsDialogProps {
+  projectRef: string;      // <- add this
   projectName: string;
   onClose: () => void;
 }
 
-// unified mock data
-const initialMockMeetings: Meeting[] = [
-  { id: 1, title: "Client Review",       withWho: "ABC Corp - John Smith",   ourPerson: "Sarah Johnson", day: "2024-07-07", time: "14:00", location: "Conference Room A" },
-  { id: 2, title: "Team Standup",        withWho: "Internal Team",           ourPerson: "Mike Davis",    day: "2024-07-08", time: "09:00", location: "Teams Meeting" },
-  { id: 3, title: "Budget Review",       withWho: "ABC Corp - Finance Team", ourPerson: "Anna Wilson",   day: "2024-07-10", time: "15:30", location: "Client Office" },
-  { id: 4, title: "Project Kickoff",     withWho: "ABC Corp - Project Team", ourPerson: "Tom Brown",     day: "2024-01-15", time: "10:00", location: "Conference Room B" },
-  { id: 5, title: "Design Presentation", withWho: "ABC Corp - Design Team",  ourPerson: "Lisa Green",    day: "2024-03-20", time: "13:00", location: "Zoom Meeting" },
-];
-
-export const MeetingsDialog = ({ projectName }: MeetingsDialogProps) => {
+export const MeetingsDialog = ({ projectRef, projectName }: MeetingsDialogProps) => {
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState<"all" | "planned" | "finished">("all");
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
-  const [meetings, setMeetings] = useState<Meeting[]>(initialMockMeetings);
   const [isFilterOpen, setIsFilterOpen] = useState(false);
 
-  const isPast = (m: Meeting) => new Date(`${m.day} ${m.time}`) < new Date();
+  const { data: meetings = [], isLoading, createMeeting } = useProjectMeetings(projectRef);
+
+  const isPast = (m: Meeting) => new Date(`${m.day}T${m.time}:00`) < new Date();
 
   const filteredMeetings = useMemo(() => {
     const now = new Date();
-    const matches = meetings.filter(m => {
+    const matches = (meetings as Meeting[]).filter(m => {
       const matchesSearch =
         !searchTerm ||
         m.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
         m.withWho.toLowerCase().includes(searchTerm.toLowerCase()) ||
         m.ourPerson.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        m.location.toLowerCase().includes(searchTerm.toLowerCase());
+        (m.location ?? "").toLowerCase().includes(searchTerm.toLowerCase());
 
-      const past = new Date(`${m.day} ${m.time}`) < now;
+      const past = new Date(`${m.day}T${m.time}:00`) < now;
       const matchesStatus =
         statusFilter === "all" ||
         (statusFilter === "planned" && !past) ||
@@ -63,10 +58,10 @@ export const MeetingsDialog = ({ projectName }: MeetingsDialogProps) => {
       return matchesSearch && matchesStatus;
     });
 
-    // sort: upcoming first (earliest first), then past (latest first)
+    // upcoming first asc; past last desc
     return matches.sort((a, b) => {
-      const da = new Date(`${a.day} ${a.time}`);
-      const db = new Date(`${b.day} ${b.time}`);
+      const da = new Date(`${a.day}T${a.time}:00`);
+      const db = new Date(`${b.day}T${b.time}:00`);
       const aUpcoming = da >= now;
       const bUpcoming = db >= now;
       if (aUpcoming && !bUpcoming) return -1;
@@ -78,9 +73,7 @@ export const MeetingsDialog = ({ projectName }: MeetingsDialogProps) => {
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
     const today = new Date();
-    const tomorrow = new Date();
-    tomorrow.setDate(today.getDate() + 1);
-
+    const tomorrow = new Date(); tomorrow.setDate(today.getDate() + 1);
     if (date.toDateString() === today.toDateString()) return "Today";
     if (date.toDateString() === tomorrow.toDateString()) return "Tomorrow";
     return date.toLocaleDateString("en-US", {
@@ -90,27 +83,27 @@ export const MeetingsDialog = ({ projectName }: MeetingsDialogProps) => {
     });
   };
 
-  // Always normalize created data into our Meeting shape
-  const handleCreateMeeting = (data: any) => {
-    // Accept flexible inputs from CreateMeetingDialog and normalize:
-    const normalized: Meeting = {
-      id: Date.now(),
-      title: data.title ?? data.topic ?? "Untitled",
-      withWho: data.withWho ?? data.clientName ?? "—",
-      ourPerson: data.ourPerson ?? data.ourCompanyPerson ?? "—",
-      // prefer “meeting_date” ISO or separate day/time
-      day: data.day ?? (data.meeting_date ? new Date(data.meeting_date).toISOString().slice(0, 10) : ""),
-      time:
-        data.time ??
-        (data.meeting_date
-          ? new Date(data.meeting_date).toISOString().slice(11, 16) // HH:mm
-          : ""),
-      location: data.location ?? data.link ?? "—",
+  // Create -> call API (normalize FE -> BE payload)
+  const handleCreateMeeting = async (data: any) => {
+    // FE form gives separate day/time; combine to ISO for BE if your BE uses `meeting_at`
+    const meetingAt =
+      data.meeting_date ??
+      (data.day && data.time ? new Date(`${data.day}T${data.time}:00`).toISOString() : null);
+
+    const payload = {
+      title: data.title ?? data.topic,
+      with_who: data.withWho ?? data.clientName,
+      our_person: data.ourCompanyPerson ?? data.ourPerson,
+      location: data.location ?? data.link,
+      meeting_at: meetingAt,     // preferred in BE
+      // If BE uses separate columns, also send:
+      day: data.day || undefined,
+      time: data.time || undefined,
+      description: data.description || undefined,
     };
 
-    setMeetings(prev => [...prev, normalized]);
+    await createMeeting(payload);
     setIsCreateDialogOpen(false);
-    console.log("New meeting (normalized):", normalized);
   };
 
   const filterContent = (
@@ -196,25 +189,29 @@ export const MeetingsDialog = ({ projectName }: MeetingsDialogProps) => {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filteredMeetings.map(m => (
-                  <TableRow key={m.id}>
-                    <TableCell className="font-medium">{m.title}</TableCell>
-                    <TableCell>{m.withWho}</TableCell>
-                    <TableCell>{m.ourPerson}</TableCell>
-                    <TableCell>
-                      <Badge variant={isPast(m) ? "secondary" : "default"}>
-                        {m.day ? formatDate(m.day) : "—"}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="font-medium">{m.time || "—"}</TableCell>
-                    <TableCell>{m.location || "—"}</TableCell>
-                  </TableRow>
-                ))}
+                {isLoading ? (
+                  <TableRow><TableCell colSpan={6}>Loading…</TableCell></TableRow>
+                ) : (
+                  filteredMeetings.map((m) => (
+                    <TableRow key={m.id}>
+                      <TableCell className="font-medium">{m.title}</TableCell>
+                      <TableCell>{m.withWho}</TableCell>
+                      <TableCell>{m.ourPerson}</TableCell>
+                      <TableCell>
+                        <Badge variant={isPast(m) ? "secondary" : "default"}>
+                          {m.day ? formatDate(m.day) : "—"}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="font-medium">{m.time || "—"}</TableCell>
+                      <TableCell>{m.location || "—"}</TableCell>
+                    </TableRow>
+                  ))
+                )}
               </TableBody>
             </Table>
           </div>
 
-          {filteredMeetings.length === 0 && (
+          {!isLoading && filteredMeetings.length === 0 && (
             <div className="text-center py-8 text-gray-500">
               No meetings found for the selected filter.
             </div>

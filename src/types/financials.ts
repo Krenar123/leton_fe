@@ -1,6 +1,7 @@
 
 export interface EstimateActualItem {
   ref: string;
+  parent_id: string;
   itemLine: string;
   contractor?: string; // Added contractor field
   costCode?: string; // Auto-generated cost code (1, 1.1, 1.1.1, etc.)

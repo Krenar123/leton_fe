@@ -1,7 +1,7 @@
 // src/services/api.ts
 
-//const API_BASE_URL = "http://localhost:3000/api/v1";
-const API_BASE_URL = "https://leton-be.onrender.com/api/v1";
+const API_BASE_URL = "http://localhost:3000/api/v1";
+//const API_BASE_URL = "https://leton-be.onrender.com/api/v1";
 
 // Utility function for GET requests
 async function fetchFromApi(endpoint: string) {
@@ -223,6 +223,119 @@ export async function completeItemLine(projectRef: string, ref: string) {
   }
 
   return response.json();
+}
+
+export async function fetchProjectBills(projectRef: string) {
+  return fetchFromApi(`/projects/${projectRef}/bills`);
+}
+
+export async function createBill(projectRef: string, data: {
+  item_line_id?: number;      // optional link to line
+  amount: number;
+  tax_amount?: number;
+  total_amount?: number;
+  issue_date?: string;        // yyyy-mm-dd
+  due_date?: string;          // yyyy-mm-dd
+  status?: string;            // "draft"|"issued"|...
+  bill_number?: string;       // FE can generate, BE can also default
+}) {
+  const res = await fetch(`${API_BASE_URL}/projects/${projectRef}/bills`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ bill: data }),
+  });
+  if (!res.ok) throw await res.json();
+  return res.json();
+}
+
+export async function fetchProjectInvoices(projectRef: string) {
+  return fetchFromApi(`/projects/${projectRef}/invoices`);
+}
+
+export async function createInvoice(projectRef: string, data: {
+  item_line_id: number;               // required
+  amount: number;                     // required
+  issue_date?: string;                // "yyyy-mm-dd"
+  due_date?: string;                  // "yyyy-mm-dd"
+  tax_amount?: number;
+  total_amount?: number;              // if you want different than amount + tax
+  invoice_number?: string;            // optional, BE can autogen if blank
+  status?: string;                    // optional
+}) {
+  const res = await fetch(`${API_BASE_URL}/projects/${projectRef}/invoices`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ invoice: data })
+  });
+  if (!res.ok) throw await res.json();
+  return res.json();
+}
+
+// ---------- Payments ----------
+export async function createPaymentForInvoice(projectRef: string, invoiceRef: string, data: {
+  amount: number;
+  payment_date?: string;
+  payment_method?: string;
+  reference_number?: string;
+  notes?: string;
+}) {
+  const res = await fetch(`${API_BASE_URL}/projects/${projectRef}/invoices/${invoiceRef}/payments`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ payment: data }),
+  });
+  if (!res.ok) throw await res.json();
+  return res.json();
+}
+
+export async function createPaymentForBill(projectRef: string, billRef: string, data: {
+  amount: number;
+  payment_date?: string;
+  payment_method?: string;
+  reference_number?: string;
+  notes?: string;
+}) {
+  const res = await fetch(`${API_BASE_URL}/projects/${projectRef}/bills/${billRef}/payments`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ payment: data }),
+  });
+  if (!res.ok) throw await res.json();
+  return res.json();
+}
+
+
+// ---- Project meetings CRUD ----
+export async function fetchProjectMeetings(projectRef: string) {
+  return fetchFromApi(`/projects/${projectRef}/meetings`);
+}
+
+export async function createProjectMeeting(projectRef: string, meetingData: any) {
+  const res = await fetch(`${API_BASE_URL}/projects/${projectRef}/meetings`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ meeting: meetingData }),
+  });
+  if (!res.ok) throw new Error((await res.json()).message || "Failed to create project meeting");
+  return res.json();
+}
+
+export async function updateProjectMeeting(projectRef: string, meetingRef: string, meetingData: any) {
+  const res = await fetch(`${API_BASE_URL}/projects/${projectRef}/meetings/${meetingRef}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ meeting: meetingData }),
+  });
+  if (!res.ok) throw new Error((await res.json()).message || "Failed to update project meeting");
+  return res.json();
+}
+
+export async function deleteProjectMeeting(projectRef: string, meetingRef: string) {
+  const res = await fetch(`${API_BASE_URL}/projects/${projectRef}/meetings/${meetingRef}`, {
+    method: "DELETE",
+  });
+  if (!res.ok) throw new Error((await res.json()).message || "Failed to delete project meeting");
+  return true;
 }
 
 

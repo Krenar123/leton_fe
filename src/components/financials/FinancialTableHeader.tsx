@@ -13,7 +13,7 @@ interface FinancialTableHeaderProps {
   onAddInvoice?: () => void;
   onPaymentReceived?: () => void;
   onAddBill?: () => void;
-  onBillPaid?: () => void;
+  onBillPaymentReceived?: () => void;
   onAddTeamCost?: () => void;
 }
 
@@ -28,7 +28,7 @@ export const FinancialTableHeader = ({
   onAddInvoice,
   onPaymentReceived,
   onAddBill,
-  onBillPaid,
+  onBillPaymentReceived,
   onAddTeamCost,
 }: FinancialTableHeaderProps) => {
   return (
@@ -44,7 +44,7 @@ export const FinancialTableHeader = ({
         onAddInvoice={onAddInvoice}
         onPaymentReceived={onPaymentReceived}
         onAddBill={onAddBill}
-        onBillPaid={onBillPaid}
+        onBillPaid={onBillPaymentReceived}
         onAddTeamCost={onAddTeamCost}
       />
     </div>

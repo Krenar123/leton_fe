@@ -11,6 +11,7 @@ interface ItemLineDialogProps {
   onSave: (itemLine: {
     ref?: string;
     item_line: string;
+    supplier_ref?: string;
     contractor?: string;
     estimated_cost: number;
     estimated_revenue: number;
@@ -41,6 +42,7 @@ export interface DialogState {
   formData: {
     description: string;
     vendor: string;
+    supplier_ref?: string;
     unit: string;
     quantity: string;
     pricePerUnit: string;
@@ -144,8 +146,6 @@ export const ItemLineDialog = ({
             return 'Add Category';
           case 'add-item-line':
             return 'Add Item Line';
-          case 'add-vendor':
-            return 'Add Vendor to Item Line';
           default:
             return 'Add New Item';
         }

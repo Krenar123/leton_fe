@@ -1,4 +1,4 @@
-// src/components/projects/financials/PaymentReceivedDialog.tsx
+// src/components/projects/financials/BillPaidDialog.tsx
 import { useEffect, useMemo, useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -6,22 +6,22 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
-type LoadedInvoice = {
+type LoadedBill = {
   id: string | number;
   ref: string;
-  invoice_number?: string | null;
+  bill_number?: string | null;
   amount?: number | string | null;
   total_amount?: number | string | null;
   outstanding?: number | string | null; // ← allow BE to provide this if available
   item_line_id?: number | null;
 };
 
-interface PaymentReceivedDialogProps {
+interface BillPaidDialogProps {
   isOpen: boolean;
   onClose: () => void;
   projectRef: string;
-  loadInvoices: (projectRef: string) => Promise<LoadedInvoice[]>;
-  onPayment: (invoiceRef: string, amount: number, paymentDate: string) => void;
+  loadBills: (projectRef: string) => Promise<LoadedBill[]>;
+  onPayment: (billRef: string, amount: number, paymentDate: string) => void;
   /** Optional: filter by item_line_id when you opened from a specific row */
   itemLineIdFilter?: number;
 }
@@ -38,25 +38,25 @@ const toNum = (v: unknown): number | undefined => {
   return Number.isFinite(n) ? n : undefined;
 };
 
-export const PaymentReceivedDialog = ({
+export const BillPaidDialog = ({
   isOpen,
   onClose,
   projectRef,
-  loadInvoices,
+  loadBills,
   onPayment,
   itemLineIdFilter,
-}: PaymentReceivedDialogProps) => {
-  const [invoices, setInvoices] = useState<LoadedInvoice[]>([]);
-  const [invoiceRef, setInvoiceRef] = useState<string>("");
+}: BillPaidDialogProps) => {
+  const [bills, setBills] = useState<LoadedBill[]>([]);
+  const [billRef, setbillRef] = useState<string>("");
   const [amount, setAmount] = useState<string>("");
   const [paymentDate, setPaymentDate] = useState<string>("");
 
-  // Load invoices when opening; preselect first (optionally filtered) and set defaults
+  // Load bills when opening; preselect first (optionally filtered) and set defaults
   useEffect(() => {
     if (!isOpen) return;
     (async () => {
-      const list = await loadInvoices(projectRef);
-      setInvoices(list);
+      const list = await loadBills(projectRef);
+      setBills(list);
 
       // default payment date = today
       setPaymentDate(toYMD(new Date()));
@@ -69,7 +69,7 @@ export const PaymentReceivedDialog = ({
         const first = filtered[0];
         console.log(first.ref);
         console.log(String(first.ref));
-        setInvoiceRef(String(first.ref));
+        setbillRef(String(first.ref));
 
         const pref =
           toNum(first.outstanding) ??
@@ -79,16 +79,16 @@ export const PaymentReceivedDialog = ({
 
         setAmount(pref ? String(pref) : "");
       } else {
-        setInvoiceRef("");
+        setbillRef("");
         setAmount("");
       }
     })();
-  }, [isOpen, projectRef, loadInvoices, itemLineIdFilter]);
+  }, [isOpen, projectRef, loadBills, itemLineIdFilter]);
 
-  // When the selected invoice changes, refresh the suggested amount
+  // When the selected bill changes, refresh the suggested amount
   useEffect(() => {
-    if (!invoiceRef) return;
-    const inv = invoices.find(i => i.ref === invoiceRef);
+    if (!billRef) return;
+    const inv = bills.find(i => i.ref === billRef);
     if (!inv) return;
 
     const pref =
@@ -98,14 +98,14 @@ export const PaymentReceivedDialog = ({
       0;
 
     setAmount(pref ? String(pref) : "");
-  }, [invoiceRef, invoices]);
+  }, [billRef, bills]);
 
-  const canSave = !!invoiceRef && Number(amount) > 0 && !!paymentDate;
+  const canSave = !!billRef && Number(amount) > 0 && !!paymentDate;
 
-  console.log(invoices);
+  console.log(bills);
   const options = useMemo(() => {
-    return invoices.map(i => {
-      const labelNumber = i.invoice_number || i.ref;
+    return bills.map(i => {
+      const labelNumber = i.bill_number || i.ref;
       const out = toNum(i.outstanding);
       const suffix = typeof out === "number" ? ` — outstanding: ${out.toLocaleString()}` : "";
       return {
@@ -113,14 +113,14 @@ export const PaymentReceivedDialog = ({
         label: `${labelNumber}${suffix}`,
       };
     });
-  }, [invoices]);
+  }, [bills]);
 
   console.log("options");
   console.log(options);
 
   const handleSave = () => {
     if (!canSave) return;
-    onPayment(invoiceRef, Number(amount), paymentDate);
+    onPayment(billRef, Number(amount), paymentDate);
   };
 
   return (
@@ -132,10 +132,10 @@ export const PaymentReceivedDialog = ({
 
         <div className="space-y-4">
           <div className="space-y-2">
-            <Label>Invoice</Label>
-            <Select value={invoiceRef} onValueChange={setInvoiceRef}>
+            <Label>Bill</Label>
+            <Select value={billRef} onValueChange={setbillRef}>
               <SelectTrigger>
-                <SelectValue placeholder="Select invoice" />
+                <SelectValue placeholder="Select bill" />
               </SelectTrigger>
               <SelectContent>
                 {options.map(o => (

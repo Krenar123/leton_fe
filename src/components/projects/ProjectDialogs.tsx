@@ -45,6 +45,7 @@ export const ProjectDialogs = ({
 
       <Dialog open={isMeetingsDialogOpen} onOpenChange={setIsMeetingsDialogOpen}>
         <MeetingsDialog 
+          projectRef={project.ref}
           projectName={project.name}
           onClose={() => setIsMeetingsDialogOpen(false)}
         />

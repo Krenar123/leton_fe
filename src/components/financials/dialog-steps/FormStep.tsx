@@ -1,9 +1,14 @@
-
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue
+} from "@/components/ui/select";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { CalendarIcon, ChevronLeft } from "lucide-react";
@@ -11,6 +16,7 @@ import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 import { EstimateActualItem } from "@/types/financials";
 import { DialogState } from "../ItemLineDialog";
+import { VendorCombobox } from "@/components/common/VendorCombobox";
 
 interface FormStepProps {
   dialogState: DialogState;
@@ -21,6 +27,15 @@ interface FormStepProps {
   onBack: () => void;
   onClose: () => void;
 }
+
+type VendorChoice =
+  | string
+  | {
+      ref?: string;         // supplier ref when chosen from list
+      label: string;        // supplier name
+      value?: string;       // optional (some comboboxes use value)
+      isNew?: boolean;      // created on the fly
+    };
 
 export const FormStep = ({
   dialogState,
@@ -41,25 +56,25 @@ export const FormStep = ({
 
   const estimatedCost = calculateEstimatedCost();
 
-  // Helper function to check if parent level has a vendor
+  // Does selected parent already carry a vendor?
   const hasParentVendor = () => {
-    if (actionType === 'add-main-category' || actionType === 'add-vendor') return false;
-    
-    if (actionType === 'add-category' && selectedLevel1) {
-      const parentItem = existingItemLines.find(item => item.parent_id === selectedLevel1);
-      return !!(parentItem?.contractor || parentItem?.vendor);
+    if (actionType === "add-main-category" || actionType === "add-vendor") return false;
+
+    if (actionType === "add-category" && selectedLevel1) {
+      const parentItem = existingItemLines.find((item) => item.parent_id === selectedLevel1);
+      return !!(parentItem?.contractor || (parentItem as any)?.vendor);
     }
-    
-    if (actionType === 'add-item-line' && selectedLevel2) {
-      const parentItem = existingItemLines.find(item => item.parent_id === selectedLevel2);
-      return !!(parentItem?.contractor || parentItem?.vendor);
+
+    if (actionType === "add-item-line" && selectedLevel2) {
+      const parentItem = existingItemLines.find((item) => item.parent_id === selectedLevel2);
+      return !!(parentItem?.contractor || (parentItem as any)?.vendor);
     }
-    
+
     return false;
   };
 
-  const updateFormData = (field: string, value: any) => {
-    setDialogState(prev => ({
+  const updateFormData = (field: keyof DialogState["formData"], value: any) => {
+    setDialogState((prev) => ({
       ...prev,
       formData: {
         ...prev.formData,
@@ -69,24 +84,33 @@ export const FormStep = ({
   };
 
   const handleStartDateChange = (date: Date | undefined) => {
-    updateFormData('startDate', date);
-    // If due date is before the new start date, clear it
-    if (date && formData.dueDate && formData.dueDate < date) {
-      updateFormData('dueDate', undefined);
+    updateFormData("start_date", date);
+    if (date && formData.due_date && formData.due_date < date) {
+      updateFormData("due_date", undefined);
     }
   };
 
   const handleDueDateChange = (date: Date | undefined) => {
-    // Only allow due date if it's after start date
-    if (date && formData.startDate && date < formData.startDate) {
-      return; // Don't update if due date is before start date
+    if (date && formData.start_date && date < formData.start_date) return;
+    updateFormData("due_date", date);
+  };
+
+  const handleVendorChange = (choice: VendorChoice) => {
+    if (typeof choice === "string") {
+      // user typed a brand-new vendor
+      updateFormData("vendor", choice);
+      // clear supplier_ref; BE will create from name
+      updateFormData("supplier_ref" as any, undefined);
+    } else {
+      // user selected from list
+      updateFormData("vendor", choice.label);
+      updateFormData("supplier_ref" as any, choice.ref || undefined);
     }
-    updateFormData('dueDate', date);
   };
 
   const handleSave = () => {
-    if (!formData.description || estimatedCost <= 0 || !formData.estimatedRevenue) return;
-    
+    if (!formData.description || estimatedCost <= 0 || !formData.estimated_revenue) return;
+
     const getParentId = (): string | undefined => {
       switch (actionType) {
         case "add-category":
@@ -98,57 +122,55 @@ export const FormStep = ({
         default:
           return undefined;
       }
-    }
+    };
 
-    // Check if vendor is required but missing
-    const parentHasVendor = hasParentVendor();
-    const isVendorRequired = actionType === 'add-vendor' || !parentHasVendor;
+    // vendor requirement (if parent doesn't have one and we're not in "add-vendor" we still need a vendor)
+    const parentVendorExists = hasParentVendor();
+    const isVendorRequired = actionType === "add-vendor" || !parentVendorExists;
     if (isVendorRequired && !formData.vendor.trim()) return;
 
-    // Date validation
-    if (formData.startDate && formData.dueDate && formData.dueDate < formData.startDate) {
-      return;
-    }
-    
+    // final payload to BE
     onSave({
       ...(editingItem?.ref ? { ref: editingItem.ref } : {}),
       item_line: formData.description,
-      contractor: formData.vendor || undefined,
+      contractor: formData.vendor || undefined,                     // string name (for create-on-the-fly)
+      supplier_ref: (formData as any).supplier_ref || undefined,    // when existing supplier selected
+      unit: formData.unit,
+      quantity: parseFloat(formData.quantity) || 0,
+      unit_price: parseFloat(formData.pricePerUnit) || 0,
       estimated_cost: estimatedCost,
-      estimated_revenue: parseFloat(formData.estimatedRevenue),
-      start_date: formData.startDate ? formData.startDate.toISOString() : undefined,
-      due_date: formData.dueDate ? formData.dueDate.toISOString() : undefined,
-      depends_on: formData.dependsOn === "none" ? undefined : formData.dependsOn,
+      estimated_revenue: parseFloat(formData.estimated_revenue),
+      start_date: formData.start_date ? formData.start_date.toISOString() : undefined,
+      due_date: formData.due_date ? formData.due_date.toISOString() : undefined,
+      depends_on: formData.depends_on === "none" ? undefined : formData.depends_on,
       status: formData.status,
       actionType,
       selectedLevel1,
       selectedLevel2,
       selectedLevel3,
-      unit: formData.unit,
-      quantity: parseFloat(formData.quantity) || 0,
-      unit_price: parseFloat(formData.pricePerUnit) || 0,
-      parent_id: getParentId(),
+      parent_id: getParentId()
     });
-    
+
     onClose();
   };
 
   const parentHasVendor = hasParentVendor();
-  const isVendorRequired = actionType === 'add-vendor' || !parentHasVendor;
-  const isFormValid = formData.description.trim() && 
-                     estimatedCost > 0 && 
-                     formData.estimatedRevenue &&
-                     (!isVendorRequired || formData.vendor.trim()) &&
-                     (!formData.startDate || !formData.dueDate || formData.dueDate >= formData.startDate);
+  const isVendorRequired = actionType === "add-vendor" || !parentHasVendor;
+  const isFormValid =
+    formData.description.trim() &&
+    estimatedCost > 0 &&
+    formData.estimated_revenue &&
+    (!isVendorRequired || formData.vendor.trim()) &&
+    (!formData.start_date || !formData.due_date || formData.due_date >= formData.start_date);
 
-  const showDescriptionField = actionType !== 'add-vendor';
-  const showDependenciesField = actionType === 'add-item-line';
-  const showVendorField = actionType === 'add-vendor' || !parentHasVendor;
-  const showDatesFields = actionType !== 'add-vendor';
+  const showDescriptionField = actionType !== "add-vendor";
+  const showDependenciesField = actionType === "add-item-line";
+  const showVendorField = actionType === "add-vendor" || !parentHasVendor;
+  const showDatesFields = actionType !== "add-vendor";
 
   const getVendorFieldLabel = () => {
-    if (actionType === 'add-vendor') return 'Vendor Name *';
-    return parentHasVendor ? 'Vendor (Optional - inherited from parent)' : 'Vendor *';
+    if (actionType === "add-vendor") return "Vendor Name *";
+    return parentHasVendor ? "Vendor (Optional - inherited from parent)" : "Vendor *";
   };
 
   return (
@@ -164,32 +186,33 @@ export const FormStep = ({
           {showDescriptionField && (
             <div className="space-y-2 mb-4">
               <Label htmlFor="description" className="text-sm font-medium text-blue-900">
-                Description *
+                Title *
               </Label>
               <Textarea
                 id="description"
                 value={formData.description}
-                onChange={(e) => updateFormData('description', e.target.value)}
+                onChange={(e) => updateFormData("description", e.target.value)}
                 placeholder="Detailed description of the work item"
                 className="w-full min-h-[80px] bg-white"
               />
             </div>
           )}
 
-          {/* Vendor */}
+          {/* Vendor (Creatable dropdown) */}
           {showVendorField && (
             <div className="space-y-2 mb-4">
               <Label htmlFor="vendor" className="text-sm font-medium text-blue-900">
                 {getVendorFieldLabel()}
               </Label>
-              <Input
-                id="vendor"
+
+              <VendorCombobox
                 value={formData.vendor}
-                onChange={(e) => updateFormData('vendor', e.target.value)}
+                onChange={handleVendorChange}
                 placeholder="e.g., ABC Construction, ElectroMax Ltd"
-                className="w-full bg-white"
+                autoCreate={true}
               />
-              {parentHasVendor && actionType !== 'add-vendor' && (
+
+              {parentHasVendor && actionType !== "add-vendor" && (
                 <p className="text-xs text-blue-700">
                   Vendor will be inherited from parent level if left empty
                 </p>
@@ -201,16 +224,19 @@ export const FormStep = ({
           {showDependenciesField && (
             <div className="space-y-2 mb-4">
               <Label className="text-sm font-medium text-blue-900">Dependencies</Label>
-              <Select value={formData.dependsOn} onValueChange={(value) => updateFormData('dependsOn', value)}>
+              <Select
+                value={formData.depends_on}
+                onValueChange={(value) => updateFormData("depends_on", value as any)}
+              >
                 <SelectTrigger className="w-full bg-white">
                   <SelectValue placeholder="Select dependency" />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="none">No dependency</SelectItem>
                   {existingItemLines
-                    .filter(item => item.itemLine !== formData.description)
+                    .filter((item) => item.itemLine !== formData.description)
                     .map((item) => (
-                      <SelectItem key={item.id} value={item.id}>
+                      <SelectItem key={item.id} value={item.id as any}>
                         {item.itemLine}
                       </SelectItem>
                     ))}
@@ -230,17 +256,21 @@ export const FormStep = ({
                       variant="outline"
                       className={cn(
                         "w-full justify-start text-left font-normal bg-white",
-                        !formData.startDate && "text-muted-foreground"
+                        !formData.start_date && "text-muted-foreground"
                       )}
                     >
                       <CalendarIcon className="mr-2 h-4 w-4" />
-                      {formData.startDate ? format(formData.startDate, "PPP") : <span>Select start date</span>}
+                      {formData.start_date ? (
+                        format(formData.start_date, "PPP")
+                      ) : (
+                        <span>Select start date</span>
+                      )}
                     </Button>
                   </PopoverTrigger>
                   <PopoverContent className="w-auto p-0" align="start">
                     <Calendar
                       mode="single"
-                      selected={formData.startDate}
+                      selected={formData.start_date}
                       onSelect={handleStartDateChange}
                       initialFocus
                       className="p-3 pointer-events-auto"
@@ -248,7 +278,7 @@ export const FormStep = ({
                   </PopoverContent>
                 </Popover>
               </div>
-              
+
               <div className="space-y-2">
                 <Label className="text-sm font-medium text-blue-900">Due Date</Label>
                 <Popover>
@@ -257,28 +287,30 @@ export const FormStep = ({
                       variant="outline"
                       className={cn(
                         "w-full justify-start text-left font-normal bg-white",
-                        !formData.dueDate && "text-muted-foreground"
+                        !formData.due_date && "text-muted-foreground"
                       )}
                     >
                       <CalendarIcon className="mr-2 h-4 w-4" />
-                      {formData.dueDate ? format(formData.dueDate, "PPP") : <span>Select due date</span>}
+                      {formData.due_date ? (
+                        format(formData.due_date, "PPP")
+                      ) : (
+                        <span>Select due date</span>
+                      )}
                     </Button>
                   </PopoverTrigger>
                   <PopoverContent className="w-auto p-0" align="start">
                     <Calendar
                       mode="single"
-                      selected={formData.dueDate}
+                      selected={formData.due_date}
                       onSelect={handleDueDateChange}
-                      disabled={(date) => formData.startDate ? date < formData.startDate : false}
+                      disabled={(date) => (formData.start_date ? date < formData.start_date : false)}
                       initialFocus
                       className="p-3 pointer-events-auto"
                     />
                   </PopoverContent>
                 </Popover>
-                {formData.startDate && (
-                  <p className="text-xs text-blue-700">
-                    Due date must be after start date
-                  </p>
+                {formData.start_date && (
+                  <p className="text-xs text-blue-700">Due date must be after start date</p>
                 )}
               </div>
             </div>
@@ -301,7 +333,7 @@ export const FormStep = ({
               <Input
                 id="unit"
                 value={formData.unit}
-                onChange={(e) => updateFormData('unit', e.target.value)}
+                onChange={(e) => updateFormData("unit", e.target.value)}
                 placeholder="e.g., m³, pieces, hours, m²"
                 className="w-full"
               />
@@ -315,7 +347,7 @@ export const FormStep = ({
                 id="quantity"
                 type="number"
                 value={formData.quantity}
-                onChange={(e) => updateFormData('quantity', e.target.value)}
+                onChange={(e) => updateFormData("quantity", e.target.value)}
                 placeholder="e.g., 20"
                 className="w-full"
                 min="0"
@@ -331,7 +363,7 @@ export const FormStep = ({
                 id="pricePerUnit"
                 type="number"
                 value={formData.pricePerUnit}
-                onChange={(e) => updateFormData('pricePerUnit', e.target.value)}
+                onChange={(e) => updateFormData("pricePerUnit", e.target.value)}
                 placeholder="e.g., 80.00"
                 className="w-full"
                 min="0"
@@ -340,41 +372,36 @@ export const FormStep = ({
             </div>
 
             <div className="space-y-2">
-              <Label className="text-sm font-medium text-gray-900">
-                Estimated Cost (Calculated)
-              </Label>
+              <Label className="text-sm font-medium text-gray-900">Estimated Cost (Calculated)</Label>
               <div className="flex items-center p-3 bg-blue-50 rounded-md border border-blue-200">
-                <span className="text-lg font-bold text-blue-600">
-                  {estimatedCost.toFixed(2)} EUR
-                </span>
+                <span className="text-lg font-bold text-blue-600">{estimatedCost.toFixed(2)} EUR</span>
               </div>
-              <p className="text-xs text-gray-600">
-                Automatically calculated from quantity × price per unit
-              </p>
+              <p className="text-xs text-gray-600">Automatically calculated from quantity × price per unit</p>
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="estimatedRevenue" className="text-sm font-medium text-gray-900">
+              <Label htmlFor="estimated_revenue" className="text-sm font-medium text-gray-900">
                 Estimated Revenue (Contract Amount) * (EUR)
               </Label>
               <Input
-                id="estimatedRevenue"
+                id="estimated_revenue"
                 type="number"
-                value={formData.estimatedRevenue}
-                onChange={(e) => updateFormData('estimatedRevenue', e.target.value)}
+                value={formData.estimated_revenue}
+                onChange={(e) => updateFormData("estimated_revenue", e.target.value)}
                 placeholder="0.00"
                 className="w-full"
                 min="0"
                 step="0.01"
               />
-              <p className="text-xs text-gray-600">
-                Enter the contract amount for this item line
-              </p>
+              <p className="text-xs text-gray-600">Enter the contract amount for this item line</p>
             </div>
 
             <div className="space-y-2">
               <Label className="text-sm font-medium text-gray-900">Status</Label>
-              <Select value={formData.status} onValueChange={(value: any) => updateFormData('status', value)}>
+              <Select
+                value={formData.status}
+                onValueChange={(value: any) => updateFormData("status", value)}
+              >
                 <SelectTrigger className="w-full">
                   <SelectValue placeholder="Select status" />
                 </SelectTrigger>
@@ -388,7 +415,10 @@ export const FormStep = ({
             </div>
 
             <div className="text-xs text-gray-600 bg-gray-50 p-3 rounded-md">
-              <p>* Required fields. {isVendorRequired && 'Vendor is required when parent level has no vendor assigned.'}</p>
+              <p>
+                * Required fields.{" "}
+                {isVendorRequired && "Vendor is required when parent level has no vendor assigned."}
+              </p>
             </div>
           </div>
         </div>
@@ -405,12 +435,12 @@ export const FormStep = ({
           <Button variant="outline" onClick={onClose}>
             Cancel
           </Button>
-          <Button 
+          <Button
             onClick={handleSave}
             disabled={!isFormValid}
             className="bg-blue-600 hover:bg-blue-700 text-white"
           >
-            {editingItem ? 'Update' : 'Create'} Item Line
+            {editingItem ? "Update" : "Create"} Item Line
           </Button>
         </div>
       </div>

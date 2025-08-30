@@ -27,12 +27,6 @@ export const ActionSelectionStep = ({ onSelect }: ActionSelectionStepProps) => {
       title: 'Add Item Line',
       description: 'Create a new work item under existing category (Level 3)',
       example: 'e.g., "1.1.1 - Tree Removal"'
-    },
-    {
-      type: 'add-vendor' as ActionType,
-      title: 'Add Vendor to Item Line',
-      description: 'Split existing item line by adding a new vendor',
-      example: 'e.g., Add "ABC Construction" to existing "Tree Removal"'
     }
   ];
 

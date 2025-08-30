@@ -23,6 +23,7 @@ const Suppliers = () => {
       return {
         // Your table uses numeric id; we can keep string safely as id (or create hash)
         id: entry.id,                       // use `ref`/id from BE as stable identifier
+        ref: a.ref,
         name: a.contactName || a.company || "",
         company: a.company || "",
         email: a.email || "",

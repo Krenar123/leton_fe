@@ -56,7 +56,7 @@ const SupplierTable = ({ suppliers, columnVisibility }: SupplierTableProps) => {
             <TableRow 
               key={supplier.id} 
               className="hover:bg-slate-50 cursor-pointer transition-colors"
-              onClick={() => handleRowClick(supplier.id)}
+              onClick={() => handleRowClick(supplier.ref)}
             >
               <TableCell className="font-medium cursor-pointer text-sm" style={{ color: '#0a1f44' }}>
                 {supplier.name}
