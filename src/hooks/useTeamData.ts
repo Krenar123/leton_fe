@@ -13,6 +13,7 @@ export type UIMember = {
   phone: string;
   address: string;
   avatar: string;       // initials
+  wagePerHour?: number | null; 
 };
 
 export const useTeamData = () => {
@@ -24,8 +25,6 @@ export const useTeamData = () => {
     queryKey: ["users", { q: searchTerm, department: departmentFilter }],
     queryFn: () => fetchUsersWithFilters(searchTerm, departmentFilter),
   });
-
-  console.log(data);
 
   // All members mapped from JSON:API
   const members: UIMember[] = useMemo(() => {
@@ -42,6 +41,7 @@ export const useTeamData = () => {
         phone: a.phone || "",
         address: a.address || "",
         avatar: name.split(" ").map((n: string) => n[0]).join("").toUpperCase(),
+        wagePerHour: typeof a.wagePerHour === "number" ? a.wagePerHour : (a.wagePerHour ? Number(a.wagePerHour) : null),
       };
     });
   }, [data]);
@@ -80,6 +80,7 @@ export const useTeamData = () => {
       department?: string;
       phone?: string;
       address?: string;
+      wage_per_hour?: number; 
       // password?: string; // only if your backend needs it and you allow client-side creation
     }) => createUser(payload),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["users"] }),
@@ -88,6 +89,7 @@ export const useTeamData = () => {
   const addMember = async (input: {
     name: string; position: string; department: string;
     email: string; phone: string; address: string;
+    wage_per_hour?: number;
   }) => {
     await addMemberMut({
       full_name: input.name,
@@ -96,6 +98,7 @@ export const useTeamData = () => {
       department:input.department,
       phone:     input.phone,
       address:   input.address,
+      wage_per_hour: typeof input.wage_per_hour === "number" ? input.wage_per_hour : undefined,
       // password: "Temp1234!" // if needed
     });
   };

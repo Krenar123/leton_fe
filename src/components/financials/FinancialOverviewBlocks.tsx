@@ -5,12 +5,14 @@ interface FinancialOverviewBlocksProps {
   estimatesActualsData: EstimateActualItem[];
   viewMode: ViewMode;
   onViewModeChange: (mode: ViewMode) => void;
+  teamCostTotal: number;
 }
 
 export const FinancialOverviewBlocks = ({
   estimatesActualsData,
   viewMode,
   onViewModeChange,
+  teamCostTotal,
 }: FinancialOverviewBlocksProps) => {
   const calculateTotals = () => {
     return estimatesActualsData.reduce(
@@ -46,10 +48,6 @@ export const FinancialOverviewBlocks = ({
 
   const totals = calculateTotals();
 
-  // Mock team cost data - this would come from a separate data source
-  const teamCostTotals = {
-    totalTeamCost: 85000
-  };
 
   const blocks = [
     {
@@ -84,7 +82,7 @@ export const FinancialOverviewBlocks = ({
       id: 'team-cost' as ViewMode,
       title: 'Team Cost',
       items: [
-        { label: 'Team Cost', value: teamCostTotals.totalTeamCost }
+        { label: 'Team Cost', value: teamCostTotal }
       ],
       type: 'team'
     }

@@ -12,6 +12,7 @@ import { PaymentReceivedDialog } from "./PaymentReceivedDialog";
 import { CreateInvoiceDialog } from "./CreateInvoiceDialog";
 import { CreateBillDialog } from "./CreateBillDialog";
 import { BillPaidDialog } from "./BillPaidDialog";
+import { useGetTeamCosts, useCreateTeamCosts } from "@/hooks/queries/teamCosts";
 import {
   EstimateActualItem,
   ViewMode,
@@ -140,6 +141,9 @@ export const FinancialsPageContent = ({
   const [isBillPaidDialogOpen, setIsBillPaidDialogOpen] = useState(false);
   const [actionType, setActionType] =
     useState<"invoice" | "bill-paid" | "invoice-paid" | "bill">("invoice");
+
+  const { data: teamCosts = [], refetch: refetchTeamCosts } = useGetTeamCosts(projectRef);
+  const teamCostTotal = teamCosts.reduce((sum, r) => sum + (r.totalCost || 0), 0);
 
   const handleItemLineActionInternal = (
     itemLine: string,
@@ -288,10 +292,13 @@ export const FinancialsPageContent = ({
             estimatesActualsData={estimatesActualsData}
             viewMode={viewMode}
             onViewModeChange={setViewMode}
+            teamCostTotal={teamCostTotal}
           />
 
           {viewMode === "team-cost" ? (
-            <TeamCostsTable />
+            <TeamCostsTable 
+              projectRef={projectRef}
+            />
           ) : viewMode === "contract-amounts" ||
             viewMode === "invoiced-paid" ||
             viewMode === "cost-tracking" ? (

@@ -356,8 +356,12 @@ export async function fetchClientProjects(clientRef: string) {
   return fetchFromApi(`/clients/${clientRef}/projects`);
 }
 
-export async function fetchClientBills(clientRef: string) {
+export async function fetchClientInvoices(clientRef: string) {
   return fetchFromApi(`/clients/${clientRef}/invoices`);
+}
+
+export async function fetchClientBills(clientRef: string) {
+  return fetchFromApi(`/clients/${clientRef}/bills`);
 }
 
 export async function fetchClientMeetings(clientRef: string) {
@@ -489,6 +493,30 @@ export async function deleteClientMeeting(clientRef: string,  meetingRef: string
 // --------------------
 // Team-related APIs
 // --------------------
+
+export async function fetchTeamCosts(projectRef: string, params?: { from?: string; to?: string }) {
+  const q = new URLSearchParams();
+  if (params?.from) q.set("from", params.from);
+  if (params?.to) q.set("to", params.to);
+
+  const res = await fetch(`${API_BASE_URL}/projects/${projectRef}/team_costs?${q.toString()}`);
+  if (!res.ok) throw await res.json();
+  return res.json();
+}
+
+export async function bulkCreateTeamCosts(projectRef: string, data: {
+  work_date: string;
+  description?: string;
+  entries: Array<{ user_ref: string; hours_worked: number; hourly_rate?: number; description?: string }>;
+}) {
+  const res = await fetch(`${API_BASE_URL}/projects/${projectRef}/team_costs`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ team_costs: data }),
+  });
+  if (!res.ok) throw await res.json();
+  return res.json();
+}
 
 export async function fetchUsers() {
   return fetchFromApi("/users");

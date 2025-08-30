@@ -16,7 +16,7 @@ const ClientPage = () => {
   const {
     client,
     projects,
-    bills,
+    invoices,
     meetings,
     handleClientUpdate
   } = useClientData(id || "");
@@ -96,7 +96,7 @@ const ClientPage = () => {
       <ClientContent 
         client={client} 
         projects={projects} 
-        bills={bills} 
+        invoices={invoices} 
         meetings={meetings} 
         hasNewNotes={hasNewNotes} 
         viewedNotes={viewedNotes} 

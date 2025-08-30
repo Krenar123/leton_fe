@@ -192,7 +192,7 @@ export const FormStep = ({
                 id="description"
                 value={formData.description}
                 onChange={(e) => updateFormData("description", e.target.value)}
-                placeholder="Detailed description of the work item"
+                placeholder="Title of the work item"
                 className="w-full min-h-[80px] bg-white"
               />
             </div>

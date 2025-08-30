@@ -11,7 +11,7 @@ interface Payment {
   method: string;
 }
 
-interface ClientBill {
+interface ClientInvoice {
   id: number;
   billNr: string;
   billSubject: string;
@@ -27,7 +27,7 @@ interface ClientBill {
 interface ClientPaymentsDocumentsDialogProps {
   isOpen: boolean;
   onClose: () => void;
-  bill: ClientBill | null;
+  bill: ClientInvoice | null;
 }
 
 export const ClientPaymentsDocumentsDialog = ({

@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Client } from "@/types/client";
 import { ClientSummaryCards } from "./ClientSummaryCards";
 import { ClientProjectsTable } from "./ClientProjectsTable";
-import { ClientBillsTable } from "./ClientBillsTable";
+import { ClientInvoicesTable } from "./ClientInvoicesTable";
 import { ClientMeetingsTable } from "./ClientMeetingsTable";
 import { ClientListFilters } from "./ClientListFilters";
 import { Card } from "@/components/ui/card";
@@ -18,7 +18,7 @@ interface ClientProject {
   profitability: number;
 }
 
-interface ClientBill {
+interface ClientInvoice {
   id: number;
   reference: string;
   date: string;
@@ -43,7 +43,7 @@ interface ClientMeeting {
 interface ClientContentProps {
   client: Client;
   projects: ClientProject[];
-  bills: ClientBill[];
+  invoices: ClientInvoice[];
   meetings: ClientMeeting[];
   hasNewNotes: boolean;
   viewedNotes: boolean;
@@ -54,7 +54,7 @@ interface ClientContentProps {
 export const ClientContent = ({
   client,
   projects,
-  bills,
+  invoices,
   meetings,
   hasNewNotes,
   viewedNotes,
@@ -73,7 +73,7 @@ export const ClientContent = ({
     profitability: true,
     status: true
   });
-  const [billColumns, setBillColumns] = useState({
+  const [invoiceColumns, setInvoiceColumns] = useState({
     billed: true,
     payments: true,
     outstanding: true,
@@ -90,8 +90,8 @@ export const ClientContent = ({
   });
 
   const activeProjects = client.currentProjects; //projects.filter(p => p.status === 'Active');
-  const totalBillsValue = bills.reduce((sum, bill) => sum + bill.amount, 0);
-  const paidBills = bills.reduce((sum, bill) => sum + bill.payments, 0);
+  const totalInvoicesValue = invoices.reduce((sum, invoice) => sum + invoice.amount, 0);
+  const paidInvoices = invoices.reduce((sum, invoice) => sum + invoice.payments, 0);
   const nextMeeting = meetings.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())[0];
 
   const handleColumnVisibilityChange = (column: string, value: boolean) => {
@@ -100,8 +100,8 @@ export const ClientContent = ({
         ...prev,
         [column]: value
       }));
-    } else if (activeTab === 'bills') {
-      setBillColumns(prev => ({
+    } else if (activeTab === 'invoices') {
+      setInvoiceColumns(prev => ({
         ...prev,
         [column]: value
       }));
@@ -117,8 +117,8 @@ export const ClientContent = ({
     switch (activeTab) {
       case 'projects':
         return projectColumns;
-      case 'bills':
-        return billColumns;
+      case 'invoices':
+        return invoiceColumns;
       case 'meetings':
         return meetingColumns;
       default:
@@ -133,8 +133,8 @@ export const ClientContent = ({
         <ClientSummaryCards 
           activeProjects={activeProjects} 
           totalProjects={projects.length} 
-          totalBillsValue={totalBillsValue} 
-          paidBills={paidBills} 
+          totalInvoicesValue={totalInvoicesValue} 
+          paidInvoices={paidInvoices} 
           nextMeeting={nextMeeting} 
           activeTab={activeTab} 
           onTabChange={setActiveTab} 
@@ -160,11 +160,11 @@ export const ClientContent = ({
             />
           }
 
-          {activeTab === 'bills' && 
-            <ClientBillsTable 
-              bills={bills} 
+          {activeTab === 'invoices' && 
+            <ClientInvoicesTable 
+              invoices={invoices}
               searchTerm={searchTerm} 
-              billColumns={billColumns} 
+              invoiceColumns={invoiceColumns} 
             />
           }
 

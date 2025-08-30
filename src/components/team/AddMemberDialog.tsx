@@ -44,7 +44,8 @@ export const AddMemberDialog = ({
     department: "",
     email: "",
     phone: "",
-    address: ""
+    address: "",
+    wage_per_hour: "" as string
   });
 
   const [deptMode, setDeptMode] = useState<"select" | "custom">("select");
@@ -67,7 +68,8 @@ export const AddMemberDialog = ({
         department: "",
         email: "",
         phone: "",
-        address: ""
+        address: "",
+        wage_per_hour: ""
       });
       setDeptMode("select");
       setErrors({});
@@ -107,6 +109,7 @@ export const AddMemberDialog = ({
         deptMode === "custom"
           ? formData.department.trim()
           : formData.department.trim(),
+      wage_per_hour: formData.wage_per_hour.trim(),
     };
 
     if (!trimmed.name) e.name = "Full name is required";
@@ -118,6 +121,14 @@ export const AddMemberDialog = ({
       const ok = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmed.email);
       if (!ok) e.email = "Enter a valid email";
     }
+
+    if (trimmed.wage_per_hour) {
+      const num = Number(trimmed.wage_per_hour);
+      if (!Number.isFinite(num) || num < 0) {
+        e.wage_per_hour = "Enter a valid non-negative number";
+      }
+    }
+
     setErrors(e);
     return Object.keys(e).length === 0;
   };
@@ -133,6 +144,9 @@ export const AddMemberDialog = ({
       email: formData.email.trim().toLowerCase(),
       phone: formData.phone.trim(),
       address: formData.address.trim(),
+      wage_per_hour: formData.wage_per_hour.trim()
+        ? Number(formData.wage_per_hour.trim())
+        : undefined,
     };
 
     onAddMember(payload);
@@ -144,7 +158,8 @@ export const AddMemberDialog = ({
       department: "",
       email: "",
       phone: "",
-      address: ""
+      address: "",
+      wage_per_hour: ""
     });
     setDeptMode("select");
     setErrors({});
@@ -235,6 +250,25 @@ export const AddMemberDialog = ({
 
             {deptMode === "select" && errors.department && (
               <p className="mt-1 text-xs text-red-600">{errors.department}</p>
+            )}
+          </div>
+
+          {/* wage per hour */}
+          <div>
+            <Label htmlFor="wage_per_hour">Wage per hour</Label>
+            <Input
+              id="wage_per_hour"
+              type="number"
+              inputMode="decimal"
+              step="0.01"
+              min="0"
+              value={formData.wage_per_hour}
+              onChange={(e) => setFormData(p => ({ ...p, wage_per_hour: e.target.value }))}
+              placeholder="e.g. 25.00"
+              aria-invalid={!!errors.wage_per_hour}
+            />
+            {errors.wage_per_hour && (
+              <p className="mt-1 text-xs text-red-600">{errors.wage_per_hour}</p>
             )}
           </div>
 

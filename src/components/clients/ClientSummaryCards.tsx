@@ -4,8 +4,8 @@ import { Card } from "@/components/ui/card";
 interface ClientSummaryCardsProps {
   activeProjects: number;
   totalProjects: number;
-  totalBillsValue: number;
-  paidBills: number;
+  totalInvoicesValue: number;
+  paidInvoices: number;
   nextMeeting: any;
   activeTab: string;
   onTabChange: (tab: string) => void;
@@ -15,8 +15,8 @@ interface ClientSummaryCardsProps {
 export const ClientSummaryCards = ({
   activeProjects,
   totalProjects,
-  totalBillsValue,
-  paidBills,
+  totalInvoicesValue,
+  paidInvoices,
   nextMeeting,
   activeTab,
   onTabChange,
@@ -30,7 +30,7 @@ export const ClientSummaryCards = ({
     }).format(amount);
   };
 
-  const outstandingAmount = totalBillsValue - paidBills;
+  const outstandingAmount = totalInvoicesValue - paidInvoices;
 
   return (
     <div className="grid grid-cols-2 gap-4">
@@ -53,21 +53,21 @@ export const ClientSummaryCards = ({
         </div>
       </Card>
 
-      {/* Bills Subtab */}
+      {/* Invoices Subtab */}
       <Card 
         className={`p-4 cursor-pointer transition-all h-[100px] w-full ${
-          activeTab === 'bills' ? 'bg-blue-50' : 'hover:shadow-md'
+          activeTab === 'invoices' ? 'bg-blue-50' : 'hover:shadow-md'
         }`} 
-        onClick={() => onTabChange('bills')}
+        onClick={() => onTabChange('invoices')}
       >
         <div className="grid grid-cols-3 gap-4">
           <div>
             <h3 className="font-semibold text-sm text-gray-900 mb-2">Invoiced</h3>
-            <div className="text-lg font-bold text-gray-900">{formatCurrency(totalBillsValue)}</div>
+            <div className="text-lg font-bold text-gray-900">{formatCurrency(totalInvoicesValue)}</div>
           </div>
           <div>
             <h3 className="font-semibold text-sm text-gray-900 mb-2">Payments Received</h3>
-            <div className="text-lg font-bold text-gray-900">{formatCurrency(paidBills)}</div>
+            <div className="text-lg font-bold text-gray-900">{formatCurrency(paidInvoices)}</div>
           </div>
           <div>
             <h3 className="font-semibold text-sm text-gray-900 mb-2">Outstanding</h3>

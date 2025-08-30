@@ -3,7 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import {
   fetchClientByRef,
   fetchClientProjects,
-  fetchClientBills,
+  fetchClientInvoices,
   fetchClientMeetings,
   updateClient
 } from "@/services/api";
@@ -26,9 +26,9 @@ export const useClientData = (clientRef: string) => {
     enabled: !!clientRef
   });
 
-  const { data: billsRaw,     isLoading: isLoadingBills,     error: billsError } = useQuery({
-    queryKey: ["clientBills", clientRef],
-    queryFn: () => fetchClientBills(clientRef),     // returns { data: [...] }
+  const { data: invoicesRaw,     isLoading: isLoadingInvoices,     error: invoicesError } = useQuery({
+    queryKey: ["clientInvoices", clientRef],
+    queryFn: () => fetchClientInvoices(clientRef),     // returns { data: [...] }
     enabled: !!clientRef
   });
 
@@ -82,8 +82,8 @@ export const useClientData = (clientRef: string) => {
     });
   }, [projectsRaw]);
 
-  const bills = useMemo(() => {
-    const arr = Array.isArray((billsRaw as any)?.data) ? (billsRaw as any).data : [];
+  const invoices = useMemo(() => {
+    const arr = Array.isArray((invoicesRaw as any)?.data) ? (invoicesRaw as any).data : [];
     return arr.map((e: any) => {
       const a = e.attributes || {};
       const total = Number(a.totalAmount ?? a.total_amount ?? 0);
@@ -101,7 +101,7 @@ export const useClientData = (clientRef: string) => {
         outstanding: Math.max(total - payments, 0),
       };
     });
-  }, [billsRaw]);
+  }, [invoicesRaw]);
 
   const meetings = useMemo(() => {
     const arr = Array.isArray((meetingsRaw as any)?.data) ? (meetingsRaw as any).data : [];
@@ -154,10 +154,10 @@ export const useClientData = (clientRef: string) => {
   return {
     client,      // object | undefined
     projects,    // always array
-    bills,       // always array
+    invoices,       // always array
     meetings,    // always array
-    isLoading: isLoadingClient || isLoadingProjects || isLoadingBills || isLoadingMeetings,
-    error: clientError || projectsError || billsError || meetingsError,
+    isLoading: isLoadingClient || isLoadingProjects || isLoadingInvoices || isLoadingMeetings,
+    error: clientError || projectsError || invoicesError || meetingsError,
     handleClientUpdate
   };
 };
