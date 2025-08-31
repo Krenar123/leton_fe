@@ -13,6 +13,8 @@ export interface Project {
   status: "planning" | "active" | "on-hold" | "completed" | "cancelled";
   created_at: string;
   updated_at: string;
+  openBillsOutstanding: number;
+  openInvoicesOutstanding: number;
 }
 
 

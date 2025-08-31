@@ -29,6 +29,8 @@ export const useProjectData = (projectRef: string) => {
 
   const project: Project | null = projectData?.data?.attributes || null;
 
+  console.log("project");
+  console.log(project);
   const actionItems: Objective[] = Array.isArray(objectiveData?.data)
     ? objectiveData.data.map((entry: any) => ({
         ...entry.attributes,
