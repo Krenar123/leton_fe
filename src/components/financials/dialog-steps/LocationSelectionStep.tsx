@@ -24,9 +24,8 @@ export const LocationSelectionStep = ({
   const [selectedLevel2, setSelectedLevel2] = useState<string>("");
   const [selectedLevel3, setSelectedLevel3] = useState<string>("");
 
-  // Preserve ID when flattening attributes
   const itemLines = existingItemLines.map(item => ({
-    ...item.attributes,
+    ...item,
     id: item.id,
   }));
 

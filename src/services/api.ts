@@ -1,7 +1,7 @@
 // src/services/api.ts
 
-//const API_BASE_URL = "http://localhost:3000/api/v1";
-const API_BASE_URL = "https://leton-be.onrender.com/api/v1";
+const API_BASE_URL = "http://localhost:3000/api/v1";
+//const API_BASE_URL = "https://leton-be.onrender.com/api/v1";
 
 // Utility function for GET requests
 async function fetchFromApi(endpoint: string) {
@@ -230,7 +230,7 @@ export async function fetchProjectBills(projectRef: string) {
 }
 
 export async function createBill(projectRef: string, data: {
-  item_line_id?: number;      // optional link to line
+  item_line_ids: number[];      // optional link to line
   amount: number;
   tax_amount?: number;
   total_amount?: number;
@@ -253,7 +253,7 @@ export async function fetchProjectInvoices(projectRef: string) {
 }
 
 export async function createInvoice(projectRef: string, data: {
-  item_line_id: number;               // required
+  item_line_ids: number[];              // required
   amount: number;                     // required
   issue_date?: string;                // "yyyy-mm-dd"
   due_date?: string;                  // "yyyy-mm-dd"

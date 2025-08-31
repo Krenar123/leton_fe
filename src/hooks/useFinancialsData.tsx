@@ -198,17 +198,17 @@ export const useFinancialsData = () => {
   // Create a new invoice for an item line, then refetch item lines so "invoiced/paid" columns update
   const addInvoice = async (opts: {
     projectRef: string;
-    item_line_id: number;
+    item_line_ids: number[];
     amount: number;
-    issue_date?: string; // yyyy-mm-dd
-    due_date?: string;   // yyyy-mm-dd
+    issue_date?: string;
+    due_date?: string;
     tax_amount?: number;
     total_amount?: number;
     invoice_number?: string;
     status?: string;
   }) => {
     await createInvoice(opts.projectRef, {
-      item_line_id: opts.item_line_id,
+      item_line_ids: opts.item_line_ids,
       amount: opts.amount,
       issue_date: opts.issue_date,
       due_date: opts.due_date,
@@ -217,82 +217,106 @@ export const useFinancialsData = () => {
       invoice_number: opts.invoice_number,
       status: opts.status,
     });
-    await refetch(); // refresh invoiced/paid on item lines
+    await refetch();
   };
 
   // somewhere in your data hooks / services
   const loadProjectInvoices = async (projectRef: string) => {
     const res = await fetchProjectInvoices(projectRef);
-
-    // allow either raw array or {data:[...]} (JSON:API-ish)
     const rows = Array.isArray(res) ? res : (res?.data ?? []);
-
-    const list = rows.map((row: any) => {
-      // support both flat and attributes
-      const r = row.attributes ?? row;
-
-      // the invoice reference MUST come from the invoice row, not the project
-      const invoiceRef = r.ref ?? row.ref; // prefer attributes.ref if present
-
-      // item_line_id: some serializers nest it under item_line
-      const itemLineId =
-        r.item_line_id ??
-        r.item_line?.id ??
-        row.item_line_id ??
-        row.item_line?.id ??
-        null;
-
-      // numeric helpers
-      const toNum = (v: any) => (Number.isFinite(Number(v)) ? Number(v) : undefined);
-
-      const amount = toNum(r.amount);
-      const total = toNum(r.total_amount) ?? amount;
-      const paidTotal = toNum(r.paid_total) ?? 0;
-
-      // try to use server-provided outstanding; otherwise derive it
+  
+    const toNum = (v: any) => {
+      const n = Number(v);
+      return Number.isFinite(n) ? n : undefined;
+    };
+  
+    return rows.map((row: any) => {
+      const r = row?.attributes ?? row;
+  
+      // Lines may arrive as `invoice_lines` (Rails) or camelCase if transformed upstream.
+      const rawLines: any[] = r?.invoice_lines ?? r?.invoiceLines ?? [];
+  
+      const lines = rawLines.map((ln: any) => {
+        const la = ln?.attributes ?? ln;
+        const itemLine = la?.item_line ?? la?.itemLine ?? {};
+        const itemLineAttr = itemLine?.attributes ?? itemLine;
+  
+        return {
+          id: la?.id ?? ln?.id,
+          amount: Number(la?.amount ?? 0),
+          item_line_id: itemLineAttr?.id ?? itemLine?.id,
+          item_line_ref: itemLineAttr?.ref ?? itemLine?.ref,
+          item_line_name: itemLineAttr?.item_line ?? itemLineAttr?.itemLine,
+        };
+      });
+  
+      const invoiceRef = r?.ref ?? row?.ref;
+      const paidTotal = toNum(r?.paid_total ?? r?.paidTotal) ?? 0;
+  
+      // Prefer explicit totals from server; fall back to header amount; as last resort sum of lines.
+      const headerAmount = toNum(r?.amount) ?? undefined;
+      const headerTotal = toNum(r?.total_amount ?? r?.totalAmount) ?? headerAmount;
+      const linesTotal = lines.reduce((s, l) => s + (Number.isFinite(l.amount) ? l.amount : 0), 0);
+      const totalAmount = (typeof headerTotal === "number" ? headerTotal : linesTotal);
+      const amount = (typeof headerAmount === "number" ? headerAmount : linesTotal);
+  
       const outstanding =
-        toNum(r.outstanding) ?? (typeof total === "number" ? total - paidTotal : undefined);
-
+        toNum(r?.outstanding) ??
+        (typeof totalAmount === "number" ? totalAmount - paidTotal : undefined);
+  
+      // Legacy helper for UIs that still expect a single item_line_id
+      const first_item_line_id =
+        lines[0]?.item_line_id ??
+        r?.item_line?.id ??
+        r?.item_line_id ??
+        row?.item_line?.id ??
+        row?.item_line_id ??
+        undefined;
+  
       return {
-        id: row.id ?? r.id,
-        ref: String(invoiceRef),                     // ← THIS must be the invoice ref
-        invoice_number: r.invoice_number ?? null,
+        id: row?.id ?? r?.id,
+        ref: String(invoiceRef),
+        invoice_number: r?.invoice_number ?? r?.invoiceNumber ?? null,
         amount: amount ?? 0,
-        total_amount: total ?? 0,
-        outstanding,
-        item_line_id: itemLineId ? Number(itemLineId) : undefined,
+        total_amount: totalAmount ?? 0,
+        paid_total: paidTotal ?? 0,
+        outstanding: outstanding ?? 0,
+        lines,                 // ← array of { id, amount, item_line_id, item_line_ref, item_line_name }
+        first_item_line_id,    // ← optional: keep for backward compatibility
+        created_at: r?.created_at ?? r?.createdAt,
+        status: r?.status,
+        issue_date: r?.issue_date ?? r?.issueDate,
+        due_date: r?.due_date ?? r?.dueDate,
       };
     });
-
-    return list;
   };
 
 
   // Record a payment against an invoice (by invoice ref in the URL), then refetch item lines
   const addPayment = async (projectRef: string, invoiceRef: string, data: {
     amount: number;
-    payment_date?: string;       // yyyy-mm-dd
+    payment_date?: string;
     payment_method?: string;
     reference_number?: string;
     notes?: string;
   }) => {
     await createPaymentForInvoice(projectRef, invoiceRef, data);
-    await refetch(); // refresh invoiced/paid on item lines
+    await refetch();
   };
 
   const addBill = async (opts: {
     projectRef: string;
-    item_line_id: number;
+    item_line_ids: number[];
     amount: number;
-    issue_date?: string; // yyyy-mm-dd
-    due_date?: string;   // yyyy-mm-dd
+    issue_date?: string;
+    due_date?: string;
     tax_amount?: number;
     total_amount?: number;
     bill_number?: string;
     status?: string;
   }) => {
     await createBill(opts.projectRef, {
-      item_line_id: opts.item_line_id,
+      item_line_ids: opts.item_line_ids,
       amount: opts.amount,
       issue_date: opts.issue_date,
       due_date: opts.due_date,
@@ -301,21 +325,78 @@ export const useFinancialsData = () => {
       bill_number: opts.bill_number,
       status: opts.status,
     });
-    await refetch(); // refresh invoiced/paid on item lines
+    await refetch();
   };
 
   const loadProjectBills = async (projectRef: string) => {
     const res = await fetchProjectBills(projectRef);
-    const arr = Array.isArray(res) ? res : (res?.data || []);
-    return arr.map((row: any) => ({
-      ref: row.ref ?? row.attributes?.ref,
-      bill_number: row.bill_number ?? row.attributes?.bill_number,
-      amount: Number(row.amount ?? row.attributes?.amount) || 0,
-      total_amount: Number(row.total_amount ?? row.attributes?.total_amount) || 0,
-      outstanding: Number(row.outstanding ?? row.attributes?.outstanding) || 0,
-      item_line_id: row.item_line?.id ?? row.attributes?.item_line_id,
-    }));
+    const rows = Array.isArray(res) ? res : (res?.data ?? []);
+  
+    const toNum = (v: any) => {
+      const n = Number(v);
+      return Number.isFinite(n) ? n : undefined;
+    };
+  
+    return rows.map((row: any) => {
+      const r = row?.attributes ?? row;
+  
+      // Lines may arrive as `bill_lines` (Rails) or camelCase.
+      const rawLines: any[] = r?.bill_lines ?? r?.billLines ?? [];
+  
+      const lines = rawLines.map((ln: any) => {
+        const la = ln?.attributes ?? ln;
+        const itemLine = la?.item_line ?? la?.itemLine ?? {};
+        const itemLineAttr = itemLine?.attributes ?? itemLine;
+  
+        return {
+          id: la?.id ?? ln?.id,
+          amount: Number(la?.amount ?? 0),
+          item_line_id: itemLineAttr?.id ?? itemLine?.id,
+          item_line_ref: itemLineAttr?.ref ?? itemLine?.ref,
+          item_line_name: itemLineAttr?.item_line ?? itemLineAttr?.itemLine,
+        };
+      });
+  
+      const billRef = r?.ref ?? row?.ref;
+      const paidTotal = toNum(r?.paid_total ?? r?.paidTotal) ?? 0;
+  
+      const headerAmount = toNum(r?.amount) ?? undefined;
+      const headerTotal = toNum(r?.total_amount ?? r?.totalAmount) ?? headerAmount;
+      const linesTotal = lines.reduce((s, l) => s + (Number.isFinite(l.amount) ? l.amount : 0), 0);
+      const totalAmount = (typeof headerTotal === "number" ? headerTotal : linesTotal);
+      const amount = (typeof headerAmount === "number" ? headerAmount : linesTotal);
+  
+      const outstanding =
+        toNum(r?.outstanding) ??
+        (typeof totalAmount === "number" ? totalAmount - paidTotal : undefined);
+  
+      // Legacy helper for UIs that still expect a single item_line_id
+      const first_item_line_id =
+        lines[0]?.item_line_id ??
+        r?.item_line?.id ??
+        r?.item_line_id ??
+        row?.item_line?.id ??
+        row?.item_line_id ??
+        undefined;
+  
+      return {
+        id: row?.id ?? r?.id,
+        ref: String(billRef),
+        bill_number: r?.bill_number ?? r?.billNumber ?? null,
+        amount: amount ?? 0,
+        total_amount: totalAmount ?? 0,
+        paid_total: paidTotal ?? 0,
+        outstanding: outstanding ?? 0,
+        lines,                 // ← array of { id, amount, item_line_id, item_line_ref, item_line_name }
+        first_item_line_id,    // ← optional: keep for backward compatibility
+        created_at: r?.created_at ?? r?.createdAt,
+        status: r?.status,
+        issue_date: r?.issue_date ?? r?.issueDate,
+        due_date: r?.due_date ?? r?.dueDate,
+      };
+    });
   };
+  
 
   const addBillPayment = async (projectRef: string, billRef: string, data: {
     amount: number;

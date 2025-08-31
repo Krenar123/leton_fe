@@ -119,9 +119,9 @@ export const FinancialsPageContent = ({
   getDocumentsForItemLine,
   onDeleteDocument,
   onRenameDocument,
-  addInvoice,            // <- here
-  addPayment,            // <- here
-  loadProjectInvoices,   // <- here
+  addInvoice,
+  addPayment,
+  loadProjectInvoices,
   addBill,
   loadProjectBills,
   addBillPayment,
@@ -228,45 +228,31 @@ export const FinancialsPageContent = ({
   };
 
   // ←—— where addInvoice is called
-  const handleCreateInvoice = async (
-    selectedItems: { costCode: string; itemLine: string; amount: number, invoiceNumber: string; }[]
-  ) => {
-    const first = selectedItems[0];
-    if (!first) return;
-
-    // map itemLine text to its id for item_line_id
-    const target = estimatesActualsData.find((i) => i.itemLine === first.itemLine);
-    if (!target?.id) return;
-
+  const handleCreateInvoice = async (payload: {
+    item_line_ids: number[];
+    amount: number;
+    invoiceNumber: string;
+  }) => {
     await addInvoice({
       projectRef,
-      item_line_id: Number(target.id),
-      amount: first.amount,
-      invoice_number: first.invoiceNumber
-      // issue_date, due_date... can be added when your dialog collects them
+      item_line_ids: payload.item_line_ids,
+      amount: payload.amount,
+      invoice_number: payload.invoiceNumber,
     });
-
     setIsCreateInvoiceDialogOpen(false);
   };
 
-  const handleCreateBill = async (
-    selectedItems: { costCode: string; itemLine: string; amount: number, billNumber: string; }[]
-  ) => {
-    const first = selectedItems[0];
-    if (!first) return;
-
-    // map itemLine text to its id for item_line_id
-    const target = estimatesActualsData.find((i) => i.itemLine === first.itemLine);
-    if (!target?.id) return;
-
+  const handleCreateBill = async (payload: {
+    item_line_ids: number[];
+    amount: number;
+    billNumber: string;
+  }) => {
     await addBill({
       projectRef,
-      item_line_id: Number(target.id),
-      amount: first.amount,
-      bill_number: first.billNumber
-      // issue_date, due_date... can be added when your dialog collects them
+      item_line_ids: payload.item_line_ids,
+      amount: payload.amount,
+      bill_number: payload.billNumber,
     });
-
     setIsCreateBillDialogOpen(false);
   };
   

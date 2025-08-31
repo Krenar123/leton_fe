@@ -108,6 +108,7 @@ export const HierarchicalFinancialTable = ({
     if (!item) return null;
     const estimatedCost = (item.quantity || 0) * (item.unitPrice || 0);
     const revisedContract = item.estimatedRevenue || estimatedCost;
+    const originalContract = item.estimatedRevenue || estimatedCost;
     const balance = revisedContract - (item.paid || 0);
     const status = getStatusFromItem(item);
   
@@ -115,8 +116,8 @@ export const HierarchicalFinancialTable = ({
       case "contract-amounts":
         return (
           <>
-            <TableCell className="text-right flex-1">{formatCurrency(estimatedCost)}</TableCell>
-            <TableCell className="text-right flex-1">{formatCurrency(revisedContract)}</TableCell>
+            <TableCell className="text-right flex-1">{formatCurrency(originalContract)}</TableCell>
+            <TableCell className="text-right flex-1">-</TableCell>
             <TableCell className="text-center flex-1">
               <TooltipProvider>
                 <Tooltip>
