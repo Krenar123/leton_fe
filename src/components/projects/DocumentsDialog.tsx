@@ -9,89 +9,21 @@ import { DocumentsToolbar } from "./documents/DocumentsToolbar";
 import { DocumentsTable } from "./documents/DocumentsTable";
 import { DocumentsGrid } from "./documents/DocumentsGrid";
 import { MoveFolderDialog } from "./documents/MoveFolderDialog";
+import { useProjectDocuments } from "@/hooks/useProjectDocuments";
+import { useToast } from "@/hooks/use-toast";
 
 interface DocumentsDialogProps {
+  projectRef: string;
   projectName: string;
   onClose: () => void;
 }
 
-const quickAccessFolders: QuickAccessFolder[] = [
-  { id: "home", name: "Project Home", icon: Home, folderId: null },
-  { id: "contracts", name: "Contracts", icon: Folder, folderId: 2 },
-  { id: "plans", name: "Project Plans", icon: Folder, folderId: 1 },
-];
+// Quick access folders will be defined inside the component to access the actual folder IDs
 
-const initialMockDocuments: DocumentItem[] = [
-  {
-    id: 1,
-    name: "Project Plans",
-    type: "folder",
-    createdAt: "2024-07-01T10:00:00Z",
-    updatedAt: "2024-07-06T14:20:00Z",
-    parentId: null,
-    lastAccessedAt: "2024-07-06T14:20:00Z"
-  },
-  {
-    id: 2,
-    name: "Contracts",
-    type: "folder",
-    createdAt: "2024-07-02T09:00:00Z",
-    updatedAt: "2024-07-05T11:30:00Z",
-    parentId: null,
-    isFavorite: true,
-    lastAccessedAt: "2024-07-05T11:30:00Z"
-  },
-  {
-    id: 3,
-    name: "Project Specification.pdf",
-    type: "file",
-    size: 2500000,
-    createdAt: "2024-07-03T14:20:00Z",
-    updatedAt: "2024-07-03T14:20:00Z",
-    parentId: 1,
-    fileType: "pdf",
-    isFavorite: true,
-    lastAccessedAt: "2024-07-03T14:20:00Z"
-  },
-  {
-    id: 4,
-    name: "Budget Analysis.xlsx",
-    type: "file",
-    size: 850000,
-    createdAt: "2024-07-04T16:45:00Z",
-    updatedAt: "2024-07-06T10:15:00Z",
-    parentId: null,
-    fileType: "xlsx",
-    isNew: true,
-    lastAccessedAt: "2024-07-06T10:15:00Z"
-  },
-  {
-    id: 5,
-    name: "Meeting Notes.docx",
-    type: "file",
-    size: 125000,
-    createdAt: "2024-07-05T11:30:00Z",
-    updatedAt: "2024-07-05T11:30:00Z",
-    parentId: null,
-    fileType: "docx",
-    lastAccessedAt: "2024-07-05T11:30:00Z"
-  },
-  {
-    id: 6,
-    name: "Floor Plans.dwg",
-    type: "file",
-    size: 5200000,
-    createdAt: "2024-07-06T08:15:00Z",
-    updatedAt: "2024-07-06T08:15:00Z",
-    parentId: 1,
-    fileType: "dwg",
-    isNew: true,
-    lastAccessedAt: "2024-07-06T08:15:00Z"
-  }
-];
 
-export const DocumentsDialog = ({ projectName, onClose }: DocumentsDialogProps) => {
-  const [documents, setDocuments] = useState<DocumentItem[]>(initialMockDocuments);
+export const DocumentsDialog = ({ projectRef, projectName, onClose }: DocumentsDialogProps) => {
+  const { documents, loading, error, handleUpload, handleDelete, refreshDocuments } = useProjectDocuments(projectRef);
+  const { toast } = useToast();
   const [currentFolderId, setCurrentFolderId] = useState<number | null>(null);
   const [folderPath, setFolderPath] = useState<DocumentItem[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
@@ -105,16 +37,58 @@ export const DocumentsDialog = ({ projectName, onClose }: DocumentsDialogProps) 
   const [sortDirection, setSortDirection] = useState<SortDirection>('asc');
   const [isMoveDialogOpen, setIsMoveDialogOpen] = useState(false);
   const [movingItem, setMovingItem] = useState<DocumentItem | null>(null);
+  
+  // Local state for UI interactions (favorites, etc.)
+  const [localDocumentState, setLocalDocumentState] = useState<Record<number, { isFavorite?: boolean; isNew?: boolean; lastAccessedAt?: string }>>({});
+  
+  // Local state for folders (since backend doesn't support folders yet)
+  const [localFolders, setLocalFolders] = useState<DocumentItem[]>([
+    {
+      id: 1,
+      name: "Project Plans",
+      type: "folder",
+      createdAt: "2024-07-01T10:00:00Z",
+      updatedAt: "2024-07-06T14:20:00Z",
+      parentId: null,
+      lastAccessedAt: "2024-07-06T14:20:00Z"
+    },
+    {
+      id: 2,
+      name: "Contracts",
+      type: "folder",
+      createdAt: "2024-07-02T09:00:00Z",
+      updatedAt: "2024-07-05T11:30:00Z",
+      parentId: null,
+      isFavorite: true,
+      lastAccessedAt: "2024-07-05T11:30:00Z"
+    }
+  ]);
+
+  // Merge backend documents with local folders and state
+  const mergedDocuments = useMemo(() => {
+    const allDocuments = [...documents, ...localFolders];
+    return allDocuments.map(doc => ({
+      ...doc,
+      ...localDocumentState[doc.id]
+    }));
+  }, [documents, localFolders, localDocumentState]);
+
+  // Quick access folders based on actual folder IDs
+  const quickAccessFolders: QuickAccessFolder[] = useMemo(() => [
+    { id: "home", name: "Project Home", icon: Home, folderId: null },
+    { id: "contracts", name: "Contracts", icon: Folder, folderId: 2 },
+    { id: "plans", name: "Project Plans", icon: Folder, folderId: 1 },
+  ], []);
 
   // Recently used folders (mock data based on lastAccessedAt)
   const recentlyUsedFolders = useMemo(() => {
-    return documents
+    return mergedDocuments
       .filter(doc => doc.type === "folder" && doc.lastAccessedAt)
       .sort((a, b) => new Date(b.lastAccessedAt!).getTime() - new Date(a.lastAccessedAt!).getTime())
       .slice(0, 5);
-  }, [documents]);
+  }, [mergedDocuments]);
 
-  const currentItems = documents.filter(doc => doc.parentId === currentFolderId);
+  const currentItems = mergedDocuments.filter(doc => doc.parentId === currentFolderId);
   
   const filteredAndSearchedItems = currentItems.filter(item => {
     const matchesSearch = item.name.toLowerCase().includes(searchTerm.toLowerCase());
@@ -175,11 +149,10 @@ export const DocumentsDialog = ({ projectName, onClose }: DocumentsDialogProps) 
     setFolderPath([...folderPath, folder]);
     
     // Update last accessed time
-    setDocuments(prev => prev.map(doc => 
-      doc.id === folder.id 
-        ? { ...doc, lastAccessedAt: new Date().toISOString() }
-        : doc
-    ));
+    setLocalDocumentState(prev => ({
+      ...prev,
+      [folder.id]: { ...prev[folder.id], lastAccessedAt: new Date().toISOString() }
+    }));
   };
 
   const handleQuickAccessClick = (quickFolder: QuickAccessFolder) => {
@@ -187,17 +160,16 @@ export const DocumentsDialog = ({ projectName, onClose }: DocumentsDialogProps) 
       setCurrentFolderId(null);
       setFolderPath([]);
     } else {
-      const folder = documents.find(doc => doc.id === quickFolder.folderId);
+      const folder = mergedDocuments.find(doc => doc.id === quickFolder.folderId);
       if (folder) {
         setCurrentFolderId(folder.id);
         setFolderPath([folder]);
         
         // Update last accessed time
-        setDocuments(prev => prev.map(doc => 
-          doc.id === folder.id 
-            ? { ...doc, lastAccessedAt: new Date().toISOString() }
-            : doc
-        ));
+        setLocalDocumentState(prev => ({
+          ...prev,
+          [folder.id]: { ...prev[folder.id], lastAccessedAt: new Date().toISOString() }
+        }));
       }
     }
   };
@@ -208,7 +180,7 @@ export const DocumentsDialog = ({ projectName, onClose }: DocumentsDialogProps) 
     let currentFolder: DocumentItem | undefined = folder;
     
     while (currentFolder && currentFolder.parentId !== null) {
-      const parent = documents.find(doc => doc.id === currentFolder.parentId);
+      const parent = mergedDocuments.find(doc => doc.id === currentFolder.parentId);
       if (parent) {
         pathToFolder.unshift(parent);
         currentFolder = parent;
@@ -222,11 +194,10 @@ export const DocumentsDialog = ({ projectName, onClose }: DocumentsDialogProps) 
     setCurrentFolderId(folder.id);
     
     // Update last accessed time
-    setDocuments(prev => prev.map(doc => 
-      doc.id === folder.id 
-        ? { ...doc, lastAccessedAt: new Date().toISOString() }
-        : doc
-    ));
+    setLocalDocumentState(prev => ({
+      ...prev,
+      [folder.id]: { ...prev[folder.id], lastAccessedAt: new Date().toISOString() }
+    }));
   };
 
   const handleBackClick = () => {
@@ -249,58 +220,73 @@ export const DocumentsDialog = ({ projectName, onClose }: DocumentsDialogProps) 
       lastAccessedAt: new Date().toISOString()
     };
     
-    setDocuments(prev => [...prev, newFolder]);
+    setLocalFolders(prev => [...prev, newFolder]);
     setIsCreateFolderOpen(false);
+    toast({
+      title: "Success",
+      description: `Folder "${name}" created successfully`,
+    });
     console.log('New folder created:', newFolder);
   };
 
-  const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = event.target.files;
     if (!files) return;
 
-    Array.from(files).forEach(file => {
-      const newFile: DocumentItem = {
-        id: Date.now() + Math.random(),
-        name: file.name,
-        type: "file",
-        size: file.size,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-        parentId: currentFolderId,
-        fileType: file.name.split('.').pop()?.toLowerCase(),
-        isNew: true,
-        lastAccessedAt: new Date().toISOString()
-      };
-      
-      setDocuments(prev => [...prev, newFile]);
-      console.log('File uploaded:', newFile);
-    });
+    try {
+      // Upload files one by one
+      for (const file of Array.from(files)) {
+        await handleUpload(file);
+        toast({
+          title: "Success",
+          description: `${file.name} uploaded successfully`,
+        });
+      }
+    } catch (error) {
+      toast({
+        title: "Upload Error",
+        description: error instanceof Error ? error.message : "Failed to upload file",
+        variant: "destructive",
+      });
+    }
 
     event.target.value = '';
   };
 
   const handleToggleFavorite = (item: DocumentItem) => {
-    setDocuments(prev => prev.map(doc => 
-      doc.id === item.id 
-        ? { ...doc, isFavorite: !doc.isFavorite, updatedAt: new Date().toISOString() }
-        : doc
-    ));
+    setLocalDocumentState(prev => ({
+      ...prev,
+      [item.id]: { ...prev[item.id], isFavorite: !item.isFavorite }
+    }));
     console.log('Toggled favorite for:', item.name);
   };
 
   const handleCopy = (item: DocumentItem) => {
-    const newItem: DocumentItem = {
-      ...item,
-      id: Date.now() + Math.random(),
-      name: `${item.name} - Copy`,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-      isNew: true,
-      lastAccessedAt: new Date().toISOString()
-    };
-    
-    setDocuments(prev => [...prev, newItem]);
-    console.log('Item copied:', item.name, 'to', newItem.name);
+    if (item.type === "folder") {
+      const newFolder: DocumentItem = {
+        ...item,
+        id: Date.now() + Math.random(),
+        name: `${item.name} - Copy`,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        isNew: true,
+        lastAccessedAt: new Date().toISOString()
+      };
+      
+      setLocalFolders(prev => [...prev, newFolder]);
+      toast({
+        title: "Success",
+        description: `Folder "${newFolder.name}" created successfully`,
+      });
+      console.log('Folder copied:', item.name, 'to', newFolder.name);
+    } else {
+      // TODO: Implement file copy functionality in backend
+      toast({
+        title: "Feature Not Available",
+        description: "File copying is not yet supported. Please contact your administrator.",
+        variant: "destructive",
+      });
+    }
   };
 
   const handleMove = (item: DocumentItem, targetFolderId: number | null = null) => {
@@ -308,12 +294,25 @@ export const DocumentsDialog = ({ projectName, onClose }: DocumentsDialogProps) 
       setMovingItem(item);
       setIsMoveDialogOpen(true);
     } else {
-      setDocuments(prev => prev.map(doc => 
-        doc.id === item.id 
-          ? { ...doc, parentId: targetFolderId, updatedAt: new Date().toISOString() }
-          : doc
-      ));
-      console.log('Item moved:', item.name, 'to folder ID:', targetFolderId);
+      if (item.type === "folder") {
+        setLocalFolders(prev => prev.map(folder => 
+          folder.id === item.id 
+            ? { ...folder, parentId: targetFolderId, updatedAt: new Date().toISOString() }
+            : folder
+        ));
+        toast({
+          title: "Success",
+          description: `Folder "${item.name}" moved successfully`,
+        });
+        console.log('Folder moved:', item.name, 'to folder ID:', targetFolderId);
+      } else {
+        // TODO: Implement file move functionality in backend
+        toast({
+          title: "Feature Not Available",
+          description: "File moving is not yet supported. Please contact your administrator.",
+          variant: "destructive",
+        });
+      }
     }
   };
 
@@ -326,21 +325,15 @@ export const DocumentsDialog = ({ projectName, onClose }: DocumentsDialogProps) 
   const handleOpen = (item: DocumentItem) => {
     console.log('Opening:', item.name);
     
-    // Mark as viewed if it was new
-    if (item.isNew) {
-      setDocuments(prev => prev.map(doc => 
-        doc.id === item.id 
-          ? { ...doc, isNew: false, lastAccessedAt: new Date().toISOString() }
-          : doc
-      ));
-    } else {
-      // Update last accessed time
-      setDocuments(prev => prev.map(doc => 
-        doc.id === item.id 
-          ? { ...doc, lastAccessedAt: new Date().toISOString() }
-          : doc
-      ));
-    }
+    // Mark as viewed if it was new and update last accessed time
+    setLocalDocumentState(prev => ({
+      ...prev,
+      [item.id]: { 
+        ...prev[item.id], 
+        isNew: false, 
+        lastAccessedAt: new Date().toISOString() 
+      }
+    }));
     
     if (item.type === "folder") {
       handleFolderClick(item);
@@ -357,26 +350,60 @@ export const DocumentsDialog = ({ projectName, onClose }: DocumentsDialogProps) 
 
   const handleRenameConfirm = (newName: string) => {
     if (renamingItem) {
-      setDocuments(prev => prev.map(doc => 
-        doc.id === renamingItem.id 
-          ? { ...doc, name: newName, updatedAt: new Date().toISOString() }
-          : doc
-      ));
+      if (renamingItem.type === "folder") {
+        setLocalFolders(prev => prev.map(folder => 
+          folder.id === renamingItem.id 
+            ? { ...folder, name: newName, updatedAt: new Date().toISOString() }
+            : folder
+        ));
+        toast({
+          title: "Success",
+          description: `Folder renamed to "${newName}" successfully`,
+        });
+        console.log('Folder renamed:', renamingItem.name, 'to', newName);
+      } else {
+        // TODO: Implement file rename functionality in backend
+        toast({
+          title: "Feature Not Available",
+          description: "File renaming is not yet supported. Please contact your administrator.",
+          variant: "destructive",
+        });
+      }
       setIsRenameDialogOpen(false);
       setRenamingItem(null);
-      console.log('Item renamed:', renamingItem.name, 'to', newName);
     }
   };
 
-  const handleDelete = (item: DocumentItem) => {
-    const deleteItem = (itemId: number) => {
-      const itemsToDelete = documents.filter(doc => doc.parentId === itemId);
-      itemsToDelete.forEach(childItem => deleteItem(childItem.id));
-      setDocuments(prev => prev.filter(doc => doc.id !== itemId));
-    };
-    
-    deleteItem(item.id);
-    console.log('Item deleted:', item.name);
+  const handleDeleteDocument = async (item: DocumentItem) => {
+    try {
+      if (item.type === "folder") {
+        // Delete folder and all its children
+        const deleteFolderAndChildren = (folderId: number) => {
+          const childrenToDelete = localFolders.filter(folder => folder.parentId === folderId);
+          childrenToDelete.forEach(child => deleteFolderAndChildren(child.id));
+          setLocalFolders(prev => prev.filter(folder => folder.id !== folderId));
+        };
+        
+        deleteFolderAndChildren(item.id);
+        toast({
+          title: "Success",
+          description: `Folder "${item.name}" deleted successfully`,
+        });
+        console.log('Folder deleted:', item.name);
+      } else {
+        await handleDelete(item.id);
+        toast({
+          title: "Success",
+          description: `${item.name} deleted successfully`,
+        });
+      }
+    } catch (error) {
+      toast({
+        title: "Delete Error",
+        description: error instanceof Error ? error.message : "Failed to delete document",
+        variant: "destructive",
+      });
+    }
   };
 
   const handleDownload = (item: DocumentItem) => {
@@ -403,12 +430,25 @@ export const DocumentsDialog = ({ projectName, onClose }: DocumentsDialogProps) 
 
     const targetId = targetFolder ? targetFolder.id : null;
     if (draggedItem.parentId !== targetId) {
-      setDocuments(prev => prev.map(doc => 
-        doc.id === draggedItem.id 
-          ? { ...doc, parentId: targetId, updatedAt: new Date().toISOString() }
-          : doc
-      ));
-      console.log('Item moved:', draggedItem.name, 'to', targetFolder?.name || 'root');
+      if (draggedItem.type === "folder") {
+        setLocalFolders(prev => prev.map(folder => 
+          folder.id === draggedItem.id 
+            ? { ...folder, parentId: targetId, updatedAt: new Date().toISOString() }
+            : folder
+        ));
+        toast({
+          title: "Success",
+          description: `Folder "${draggedItem.name}" moved successfully`,
+        });
+        console.log('Folder moved:', draggedItem.name, 'to', targetFolder?.name || 'root');
+      } else {
+        // TODO: Implement file drag and drop functionality in backend
+        toast({
+          title: "Feature Not Available",
+          description: "File drag and drop is not yet supported. Please contact your administrator.",
+          variant: "destructive",
+        });
+      }
     }
     setDraggedItem(null);
   };
@@ -439,6 +479,9 @@ export const DocumentsDialog = ({ projectName, onClose }: DocumentsDialogProps) 
                 {folderPath.map((folder) => (
                   <span key={folder.id}>/ {folder.name}</span>
                 ))}
+                {currentFolderId === null && folderPath.length === 0 && (
+                  <span>/ Project Home</span>
+                )}
               </div>
 
               <DocumentsToolbar
@@ -462,7 +505,25 @@ export const DocumentsDialog = ({ projectName, onClose }: DocumentsDialogProps) 
                 onDragOver={handleDragOver}
                 onDrop={(e) => handleDrop(e, null)}
               >
-                {viewMode === "list" ? (
+                {loading ? (
+                  <div className="flex items-center justify-center py-8">
+                    <div className="text-center">
+                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900 mx-auto mb-2"></div>
+                      <p className="text-gray-500">Loading documents...</p>
+                    </div>
+                  </div>
+                ) : error ? (
+                  <div className="text-center py-8 text-red-500">
+                    <p className="mb-2">Error loading documents</p>
+                    <p className="text-sm text-gray-500 mb-4">{error}</p>
+                    <button 
+                      onClick={refreshDocuments}
+                      className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
+                    >
+                      Retry
+                    </button>
+                  </div>
+                ) : viewMode === "list" ? (
                   <DocumentsTable
                     sortedItems={sortedItems}
                     sortField={sortField}
@@ -479,7 +540,7 @@ export const DocumentsDialog = ({ projectName, onClose }: DocumentsDialogProps) 
                     onMove={handleMove}
                     onRename={handleRename}
                     onDownload={handleDownload}
-                    onDelete={handleDelete}
+                    onDelete={handleDeleteDocument}
                     formatFileSize={formatFileSize}
                     formatDate={formatDate}
                   />
@@ -496,12 +557,12 @@ export const DocumentsDialog = ({ projectName, onClose }: DocumentsDialogProps) 
                     onMove={handleMove}
                     onRename={handleRename}
                     onDownload={handleDownload}
-                    onDelete={handleDelete}
+                    onDelete={handleDeleteDocument}
                     formatFileSize={formatFileSize}
                   />
                 )}
                 
-                {sortedItems.length === 0 && (
+                {!loading && !error && sortedItems.length === 0 && (
                   <div className="text-center py-8 text-gray-500">
                     {searchTerm ? "No documents found matching your search." : 
                      showFavoritesOnly ? "No favorite items found." : "This folder is empty."}
@@ -532,7 +593,7 @@ export const DocumentsDialog = ({ projectName, onClose }: DocumentsDialogProps) 
         {movingItem && (
           <MoveFolderDialog 
             item={movingItem}
-            folders={documents}
+            folders={mergedDocuments}
             onMove={handleMoveFromDialog}
             onClose={() => {
               setIsMoveDialogOpen(false);

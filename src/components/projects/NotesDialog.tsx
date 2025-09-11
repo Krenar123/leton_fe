@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -7,106 +7,148 @@ import { Dialog, DialogTrigger } from "@/components/ui/dialog";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { CreateNoteDialog } from "./CreateNoteDialog";
 import { EditNoteDialog } from "./EditNoteDialog";
-import { Plus, Search, Grid, List, Filter } from "lucide-react";
+import { Plus, Search, Grid, List, Filter, Pin, PinOff } from "lucide-react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+  fetchProjectNotes,
+  createProjectNote,
+  updateProjectNote,
+  deleteProjectNote
+} from "@/services/api";
 
 export interface Note {
-  id: number;
-  title: string;
-  content: string;
-  category: string;
+  id: string;          // use ref string from BE
+  title: string;       // required
+  body: string;        // required (renamed from content)
+  pinned: boolean;     // required
   createdAt: string;
   updatedAt: string;
   isNew?: boolean;
 }
 
 interface NotesDialogProps {
+  projectRef: string;
   projectName: string;
   onClose: () => void;
 }
 
-const initialMockNotes: Note[] = [{
-  id: 1,
-  title: "Project Requirements",
-  content: "<p>Initial <strong>requirements</strong> discussed with client. Need to focus on <strong>quality</strong> and timeline. This is a longer note with more content to test the display.</p>",
-  category: "Planning",
-  createdAt: "2024-07-05T10:30:00Z",
-  updatedAt: "2024-07-06T14:20:00Z",
-  isNew: true
-}, {
-  id: 2,
-  title: "Budget Constraints",
-  content: "<p>Client mentioned <strong>budget limitations</strong>. Need to adjust scope accordingly. We should prioritize the most important features first.</p>",
-  category: "Financial",
-  createdAt: "2024-07-04T16:45:00Z",
-  updatedAt: "2024-07-04T16:45:00Z"
-}, {
-  id: 3,
-  title: "Team Meeting Notes",
-  content: "<p>Discussed project timeline and <strong>resource allocation</strong>. Sarah will handle frontend, Mike backend. Need to schedule weekly check-ins.</p>",
-  category: "Meetings",
-  createdAt: "2024-07-03T09:15:00Z",
-  updatedAt: "2024-07-05T11:00:00Z",
-  isNew: true
-}, {
-  id: 4,
-  title: "Client Feedback",
-  content: "<p>Client is happy with current progress. Wants to add <strong>additional features</strong> in phase 2. Meeting scheduled for next week to discuss details.</p>",
-  category: "Client",
-  createdAt: "2024-07-02T13:20:00Z",
-  updatedAt: "2024-07-02T13:20:00Z"
-}, {
-  id: 5,
-  title: "Technical Issues",
-  content: "<p>Encountered <strong>performance issues</strong> with database queries. Need optimization. Looking into indexing and query restructuring options.</p>",
-  category: "Technical",
-  createdAt: "2024-07-01T08:30:00Z",
-  updatedAt: "2024-07-06T16:10:00Z",
-  isNew: true
-}];
-
 export const NotesDialog = ({
+  projectRef,
   projectName,
   onClose
 }: NotesDialogProps) => {
-  const [notes, setNotes] = useState<Note[]>(initialMockNotes);
+  const qc = useQueryClient();
+
+  // Fetch raw jsonapi
+  const { data: notesRaw, isLoading } = useQuery({
+    queryKey: ["projectNotes", projectRef],
+    queryFn: () => fetchProjectNotes(projectRef),
+    enabled: !!projectRef
+  });
+
+  // Map jsonapi -> flat
+  const notes: Note[] = useMemo(() => {
+    const arr = Array.isArray(notesRaw?.data) ? notesRaw!.data : [];
+    return arr.map((e: any) => {
+      const a = e.attributes || {};
+      return {
+        id: e.id,
+        title: a.title,
+        body: a.body || "",
+        pinned: a.pinned || false,
+        createdAt: a.createdAt || a.created_at,
+        updatedAt: a.updatedAt || a.updated_at
+      };
+    });
+  }, [notesRaw]);
+
+  // Local UI state
+  const [searchTerm, setSearchTerm] = useState("");
+  const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [editingNote, setEditingNote] = useState<Note | null>(null);
-  const [selectedCategory, setSelectedCategory] = useState<string>("all");
-  const [searchTerm, setSearchTerm] = useState("");
-  const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
   const [isFilterOpen, setIsFilterOpen] = useState(false);
-  const categories = Array.from(new Set(notes.map(note => note.category)));
-  const filteredNotes = notes.filter(note => {
-    const matchesCategory = selectedCategory === "all" || note.category === selectedCategory;
-    const matchesSearch = note.title.toLowerCase().includes(searchTerm.toLowerCase()) || note.content.toLowerCase().includes(searchTerm.toLowerCase());
-    return matchesCategory && matchesSearch;
-  }).sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
+  const [showPinnedOnly, setShowPinnedOnly] = useState(false);
 
-  // Check if any filters are applied
-  const hasActiveFilters = selectedCategory !== "all";
+  const filteredNotes = useMemo(() => {
+    const lower = searchTerm.toLowerCase();
+    return notes
+      .filter(n => {
+        const matchesSearch =
+          n.title.toLowerCase().includes(lower) ||
+          n.body.toLowerCase().includes(lower);
+        const matchesPinned = !showPinnedOnly || n.pinned;
+        return matchesSearch && matchesPinned;
+      })
+      .sort((a, b) => {
+        // Pinned notes first, then by updated date
+        if (a.pinned && !b.pinned) return -1;
+        if (!a.pinned && b.pinned) return 1;
+        return new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime();
+      });
+  }, [notes, searchTerm, showPinnedOnly]);
+
+  // Mutations
+  const createMut = useMutation({
+    mutationFn: (noteData: any) => createProjectNote(projectRef, noteData),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["projectNotes", projectRef] });
+      setIsCreateDialogOpen(false);
+    }
+  });
+
+  const updateMut = useMutation({
+    mutationFn: ({ noteRef, noteData }: { noteRef: string; noteData: any }) => 
+      updateProjectNote(projectRef, noteRef, noteData),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["projectNotes", projectRef] });
+      setIsEditDialogOpen(false);
+      setEditingNote(null);
+    }
+  });
+
+  const deleteMut = useMutation({
+    mutationFn: (noteRef: string) => deleteProjectNote(projectRef, noteRef),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["projectNotes", projectRef] });
+    }
+  });
 
   const handleCreateNote = (noteData: Omit<Note, 'id' | 'createdAt' | 'updatedAt'>) => {
-    const newNote: Note = {
-      ...noteData,
-      id: Date.now(),
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-      isNew: true
-    };
-    setNotes(prev => [newNote, ...prev]);
-    setIsCreateDialogOpen(false);
-    console.log('New note created:', newNote);
+    createMut.mutate({
+      title: noteData.title,
+      body: noteData.body,
+      pinned: noteData.pinned
+    });
   };
 
   const handleEditNote = (updatedNote: Note) => {
-    setNotes(prev => prev.map(note => note.id === updatedNote.id ? {
-      ...updatedNote,
-      updatedAt: new Date().toISOString()
-    } : note));
-    setIsEditDialogOpen(false);
-    setEditingNote(null);
-    console.log('Note updated:', updatedNote);
+    updateMut.mutate({
+      noteRef: updatedNote.id,
+      noteData: {
+        title: updatedNote.title,
+        body: updatedNote.body,
+        pinned: updatedNote.pinned
+      }
+    });
+  };
+
+  const handleDeleteNote = (noteRef: string) => {
+    if (confirm("Are you sure you want to delete this note?")) {
+      deleteMut.mutate(noteRef);
+    }
+  };
+
+  const handleTogglePin = (note: Note) => {
+    updateMut.mutate({
+      noteRef: note.id,
+      noteData: {
+        title: note.title,
+        body: note.body,
+        pinned: !note.pinned
+      }
+    });
   };
 
   const handleNoteClick = (note: Note) => {
@@ -131,10 +173,11 @@ export const NotesDialog = ({
     return text.substring(0, maxLength) + '...';
   };
 
-  return <div>
+  return (
+    <div>
       <DialogContent className="sm:max-w-[1200px]">
         <DialogHeader>
-          <DialogTitle>Notes</DialogTitle>
+          <DialogTitle>Notes - {projectName}</DialogTitle>
         </DialogHeader>
         
         <div className="space-y-4">
@@ -145,33 +188,24 @@ export const NotesDialog = ({
               <Input placeholder="Search notes..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)} className="pl-10" />
             </div>
             <div className="flex items-center space-x-2">
-              <Button variant="outline" size="sm" onClick={() => setViewMode(viewMode === "grid" ? "list" : "grid")} className="text-[#0a1f44] text-base bg-transparent rounded-sm">
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={() => setViewMode(viewMode === "grid" ? "list" : "grid")} 
+                className="text-[#0a1f44] text-base bg-transparent rounded-sm"
+              >
                 {viewMode === "grid" ? <List className="w-4 h-4" /> : <Grid className="w-4 h-4" />}
               </Button>
               
-              <Popover open={isFilterOpen} onOpenChange={setIsFilterOpen}>
-                <PopoverTrigger asChild>
-                  <Button variant="ghost" size="sm" className="p-2 hover:bg-gray-100">
-                    <Filter className={`w-4 h-4 ${hasActiveFilters ? 'text-[#d9a44d]' : 'text-gray-600'}`} />
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-48" align="end">
-                  <div className="space-y-1">
-                    <button onClick={() => {
-                    setSelectedCategory("all");
-                    setIsFilterOpen(false);
-                  }} className={`w-full text-left px-2 py-1 text-sm rounded hover:bg-gray-100 ${selectedCategory === "all" ? "bg-gray-100 font-medium" : ""}`}>
-                      All Categories
-                    </button>
-                    {categories.map(category => <button key={category} onClick={() => {
-                    setSelectedCategory(category);
-                    setIsFilterOpen(false);
-                  }} className={`w-full text-left px-2 py-1 text-sm rounded hover:bg-gray-100 ${selectedCategory === category ? "bg-gray-100 font-medium" : ""}`}>
-                        {category}
-                      </button>)}
-                  </div>
-                </PopoverContent>
-              </Popover>
+              <Button
+                variant={showPinnedOnly ? "default" : "outline"}
+                size="sm"
+                onClick={() => setShowPinnedOnly(!showPinnedOnly)}
+                className="text-[#0a1f44] text-base bg-transparent rounded-sm"
+              >
+                {showPinnedOnly ? <PinOff className="w-4 h-4" /> : <Pin className="w-4 h-4" />}
+                {showPinnedOnly ? " Show All" : " Pinned Only"}
+              </Button>
 
               <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
                 <DialogTrigger asChild>
@@ -180,73 +214,147 @@ export const NotesDialog = ({
                     New Note
                   </Button>
                 </DialogTrigger>
-                <CreateNoteDialog onCreateNote={handleCreateNote} onClose={() => setIsCreateDialogOpen(false)} existingCategories={categories} />
+                <CreateNoteDialog 
+                  projectRef={projectRef}
+                  onCreateNote={handleCreateNote} 
+                  onClose={() => setIsCreateDialogOpen(false)} 
+                />
               </Dialog>
             </div>
           </div>
 
           <div className="text-sm text-gray-600">
             <span className="font-medium">{filteredNotes.length}</span> notes
-            {selectedCategory !== "all" && ` in ${selectedCategory}`}
+            {showPinnedOnly && " (pinned only)"}
           </div>
 
           {/* Notes Display */}
-          {viewMode === "grid" ? <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-h-[500px] overflow-y-auto">
-              {filteredNotes.map(note => <div key={note.id} className="border rounded-lg p-6 hover:bg-gray-50 transition-colors cursor-pointer shadow-sm bg-white" onClick={() => handleNoteClick(note)}>
+          {isLoading ? (
+            <div className="flex items-center justify-center py-8">
+              <div className="text-gray-500">Loading notes...</div>
+            </div>
+          ) : viewMode === "grid" ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-h-[500px] overflow-y-auto">
+              {filteredNotes.map(note => (
+                <div key={note.id} className="border rounded-lg p-6 hover:bg-gray-50 transition-colors shadow-sm bg-white relative group">
                   <div className="flex items-start justify-between mb-3">
-                    <div className="flex items-center space-x-2">
+                    <div className="flex items-center space-x-2 flex-1">
                       <h3 className="font-medium text-gray-900 text-base truncate">{note.title}</h3>
-                      {note.isNew && <Badge variant="default" className="text-xs bg-[#d9a44d]">New</Badge>}
+                      {note.pinned && <Pin className="w-4 h-4 text-yellow-500" />}
                     </div>
-                    <Badge variant="outline" className="text-xs shrink-0">
-                      {note.category}
-                    </Badge>
+                    <div className="flex items-center space-x-2">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleTogglePin(note);
+                        }}
+                        className="opacity-0 group-hover:opacity-100 transition-opacity p-1"
+                      >
+                        {note.pinned ? <PinOff className="w-4 h-4" /> : <Pin className="w-4 h-4" />}
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleDeleteNote(note.id);
+                        }}
+                        className="opacity-0 group-hover:opacity-100 transition-opacity p-1 text-red-500 hover:text-red-700"
+                      >
+                        ×
+                      </Button>
+                    </div>
                   </div>
                   
-                  <div className="text-sm text-gray-600 mb-4 line-clamp-4">
-                    {truncateText(stripHtml(note.content), 150)}
+                  <div 
+                    className="text-sm text-gray-600 mb-4 line-clamp-4 cursor-pointer"
+                    onClick={() => handleNoteClick(note)}
+                  >
+                    {truncateText(stripHtml(note.body), 150)}
                   </div>
                   
                   <div className="flex items-center justify-between text-xs text-gray-500">
                     <span>Created: {formatDate(note.createdAt)}</span>
                     {note.createdAt !== note.updatedAt && <span>Updated: {formatDate(note.updatedAt)}</span>}
                   </div>
-                </div>)}
-            </div> : <div className="space-y-4 max-h-[500px] overflow-y-auto">
-              {filteredNotes.map(note => <div key={note.id} className="border rounded-lg p-6 hover:bg-gray-50 transition-colors cursor-pointer shadow-sm bg-white" onClick={() => handleNoteClick(note)}>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="space-y-4 max-h-[500px] overflow-y-auto">
+              {filteredNotes.map(note => (
+                <div key={note.id} className="border rounded-lg p-6 hover:bg-gray-50 transition-colors shadow-sm bg-white relative group">
                   <div className="flex items-start justify-between mb-3">
-                    <div className="flex items-center space-x-3">
+                    <div className="flex items-center space-x-3 flex-1">
                       <h3 className="font-semibold text-gray-900 text-lg">{note.title}</h3>
-                      {note.isNew && <Badge variant="default" className="text-xs">New</Badge>}
+                      {note.pinned && <Pin className="w-4 h-4 text-yellow-500" />}
                     </div>
                     <div className="flex items-center space-x-4 text-sm text-gray-500">
-                      <Badge variant="outline" className="text-xs">
-                        {note.category}
-                      </Badge>
+                      <div className="flex items-center space-x-2">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleTogglePin(note);
+                          }}
+                          className="opacity-0 group-hover:opacity-100 transition-opacity p-1"
+                        >
+                          {note.pinned ? <PinOff className="w-4 h-4" /> : <Pin className="w-4 h-4" />}
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleDeleteNote(note.id);
+                          }}
+                          className="opacity-0 group-hover:opacity-100 transition-opacity p-1 text-red-500 hover:text-red-700"
+                        >
+                          ×
+                        </Button>
+                      </div>
                       <div className="text-right">
                         <div>{formatDate(note.createdAt)}</div>
                         {note.createdAt !== note.updatedAt && <div className="text-xs">Updated: {formatDate(note.updatedAt)}</div>}
                       </div>
                     </div>
                   </div>
-                  <div className="text-gray-600 leading-relaxed">
-                    {truncateText(stripHtml(note.content), 200)}
+                  <div 
+                    className="text-gray-600 leading-relaxed cursor-pointer"
+                    onClick={() => handleNoteClick(note)}
+                  >
+                    {truncateText(stripHtml(note.body), 200)}
                   </div>
-                </div>)}
-            </div>}
+                </div>
+              ))}
+            </div>
+          )}
 
-          {filteredNotes.length === 0 && <div className="text-center py-8 text-gray-500">
-              {searchTerm ? "No notes found matching your search." : "No notes in this category."}
-            </div>}
+          {!isLoading && filteredNotes.length === 0 && (
+            <div className="text-center py-8 text-gray-500">
+              {searchTerm ? "No notes found matching your search." : "No notes yet. Create your first note!"}
+            </div>
+          )}
         </div>
       </DialogContent>
 
       {/* Edit Note Dialog */}
       <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
-        {editingNote && <EditNoteDialog note={editingNote} onEditNote={handleEditNote} onClose={() => {
-        setIsEditDialogOpen(false);
-        setEditingNote(null);
-      }} existingCategories={categories} />}
+        {editingNote && (
+          <EditNoteDialog 
+            projectRef={projectRef}
+            note={editingNote} 
+            onEditNote={handleEditNote} 
+            onClose={() => {
+              setIsEditDialogOpen(false);
+              setEditingNote(null);
+            }} 
+          />
+        )}
       </Dialog>
-    </div>;
+    </div>
+  );
 };

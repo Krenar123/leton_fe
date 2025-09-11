@@ -8,10 +8,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Checkbox } from "@/components/ui/checkbox";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { fetchUsers, fetchClients } from "@/services/api";
-import { CreateMeetingData } from "@/types/project";
+import { Meeting, UpdateMeetingData } from "@/types/project";
 
-interface CreateMeetingDialogProps {
-  onCreateMeeting: (meeting: any) => void;
+interface EditMeetingDialogProps {
+  meeting: Meeting;
+  onUpdateMeeting: (meeting: UpdateMeetingData) => void;
   onClose: () => void;
 }
 
@@ -26,20 +27,22 @@ interface Client {
   name: string;
 }
 
-export const CreateMeetingDialog = ({
-  onCreateMeeting,
+export const EditMeetingDialog = ({
+  meeting,
+  onUpdateMeeting,
   onClose
-}: CreateMeetingDialogProps) => {
-  const [formData, setFormData] = useState<CreateMeetingData>({
-    title: "",
-    start_at: "",
-    end_at: "",
-    location: "",
-    agenda: "",
-    notes: "",
-    client_ref: "",
-    client_attendees_text: "",
-    attendee_user_refs: []
+}: EditMeetingDialogProps) => {
+  const [formData, setFormData] = useState<UpdateMeetingData>({
+    id: meeting.id,
+    title: meeting.title,
+    start_at: meeting.start_at,
+    end_at: meeting.end_at,
+    location: meeting.location || "",
+    agenda: meeting.agenda || "",
+    notes: meeting.notes || "",
+    client_ref: meeting.client_ref || "",
+    client_attendees_text: meeting.client_attendees_text || "",
+    attendee_user_refs: meeting.attendee_user_refs || []
   });
 
   const [users, setUsers] = useState<User[]>([]);
@@ -66,7 +69,7 @@ export const CreateMeetingDialog = ({
   const validateForm = (): boolean => {
     const errors: string[] = [];
     
-    if (!formData.title.trim()) {
+    if (!formData.title?.trim()) {
       errors.push("Title is required");
     }
     
@@ -92,7 +95,7 @@ export const CreateMeetingDialog = ({
       }
     }
     
-    if (formData.attendee_user_refs.length === 0) {
+    if (!formData.attendee_user_refs || formData.attendee_user_refs.length === 0) {
       errors.push("At least one team member must be selected");
     }
     
@@ -111,6 +114,7 @@ export const CreateMeetingDialog = ({
     try {
       // Convert to backend expected format - only include accepted parameters
       const backendPayload = {
+        id: formData.id,
         title: formData.title,
         meeting_date: formData.start_at, // Backend expects meeting_date instead of start_at
         duration_minutes: formData.start_at && formData.end_at ? 
@@ -121,27 +125,16 @@ export const CreateMeetingDialog = ({
         status: "scheduled"
       };
       
-      await onCreateMeeting(backendPayload);
-      setFormData({
-        title: "",
-        start_at: "",
-        end_at: "",
-        location: "",
-        agenda: "",
-        notes: "",
-        client_ref: "",
-        client_attendees_text: "",
-        attendee_user_refs: []
-      });
+      await onUpdateMeeting(backendPayload);
       setValidationErrors([]);
     } catch (error) {
-      console.error("Failed to create meeting:", error);
+      console.error("Failed to update meeting:", error);
     } finally {
       setIsLoading(false);
     }
   };
 
-  const handleChange = (field: keyof CreateMeetingData, value: string | string[]) => {
+  const handleChange = (field: keyof UpdateMeetingData, value: string | string[]) => {
     setFormData(prev => ({
       ...prev,
       [field]: value
@@ -152,8 +145,8 @@ export const CreateMeetingDialog = ({
     setFormData(prev => ({
       ...prev,
       attendee_user_refs: checked 
-        ? [...prev.attendee_user_refs, userRef]
-        : prev.attendee_user_refs.filter(ref => ref !== userRef)
+        ? [...(prev.attendee_user_refs || []), userRef]
+        : (prev.attendee_user_refs || []).filter(ref => ref !== userRef)
     }));
   };
 
@@ -184,13 +177,13 @@ export const CreateMeetingDialog = ({
     };
   };
 
-  const startDateTime = getDateTimeFromISO(formData.start_at);
-  const endDateTime = getDateTimeFromISO(formData.end_at);
+  const startDateTime = getDateTimeFromISO(formData.start_at || "");
+  const endDateTime = getDateTimeFromISO(formData.end_at || "");
 
   return (
     <DialogContent className="sm:max-w-[600px] max-h-[80vh] overflow-y-auto">
       <DialogHeader>
-        <DialogTitle>Create New Meeting</DialogTitle>
+        <DialogTitle>Edit Meeting</DialogTitle>
       </DialogHeader>
       
       {validationErrors.length > 0 && (
@@ -210,7 +203,7 @@ export const CreateMeetingDialog = ({
           <Label htmlFor="title">Title *</Label>
           <Input 
             id="title" 
-            value={formData.title} 
+            value={formData.title || ""} 
             onChange={e => handleChange("title", e.target.value)} 
             placeholder="Meeting title" 
             required 
@@ -218,7 +211,7 @@ export const CreateMeetingDialog = ({
         </div>
 
         <div className="grid grid-cols-2 gap-4">
-        <div className="space-y-2">
+          <div className="space-y-2">
             <Label htmlFor="start_date">Start Date *</Label>
             <Input 
               id="start_date" 
@@ -227,8 +220,8 @@ export const CreateMeetingDialog = ({
               onChange={e => handleDateChange("start_at", e.target.value)} 
               required 
             />
-        </div>
-        <div className="space-y-2">
+          </div>
+          <div className="space-y-2">
             <Label htmlFor="start_time">Start Time *</Label>
             <Input 
               id="start_time" 
@@ -267,7 +260,7 @@ export const CreateMeetingDialog = ({
           <Label htmlFor="location">Location</Label>
           <Input 
             id="location" 
-            value={formData.location} 
+            value={formData.location || ""} 
             onChange={e => handleChange("location", e.target.value)} 
             placeholder="Conference room, Teams link, etc." 
           />
@@ -277,7 +270,7 @@ export const CreateMeetingDialog = ({
           <Label htmlFor="agenda">Agenda</Label>
           <Textarea 
             id="agenda" 
-            value={formData.agenda} 
+            value={formData.agenda || ""} 
             onChange={e => handleChange("agenda", e.target.value)} 
             placeholder="Meeting agenda items..." 
             rows={3}
@@ -288,7 +281,7 @@ export const CreateMeetingDialog = ({
           <Label htmlFor="notes">Notes</Label>
           <Textarea 
             id="notes" 
-            value={formData.notes} 
+            value={formData.notes || ""} 
             onChange={e => handleChange("notes", e.target.value)} 
             placeholder="Additional notes..." 
             rows={3}
@@ -316,7 +309,7 @@ export const CreateMeetingDialog = ({
           <Label htmlFor="client_attendees_text">Client Meeting Attendees</Label>
           <Input 
             id="client_attendees_text" 
-            value={formData.client_attendees_text} 
+            value={formData.client_attendees_text || ""} 
             onChange={e => handleChange("client_attendees_text", e.target.value)} 
             placeholder="Client attendees (free-form text)" 
           />
@@ -329,7 +322,7 @@ export const CreateMeetingDialog = ({
               <div key={user.ref} className="flex items-center space-x-2">
                 <Checkbox
                   id={`user-${user.ref}`}
-                  checked={formData.attendee_user_refs.includes(user.ref)}
+                  checked={(formData.attendee_user_refs || []).includes(user.ref)}
                   onCheckedChange={checked => handleUserToggle(user.ref, checked as boolean)}
                 />
                 <Label htmlFor={`user-${user.ref}`} className="text-sm">
@@ -345,7 +338,7 @@ export const CreateMeetingDialog = ({
             Cancel
           </Button>
           <Button type="submit" disabled={isLoading}>
-            {isLoading ? "Creating..." : "Create Meeting"}
+            {isLoading ? "Updating..." : "Update Meeting"}
           </Button>
         </DialogFooter>
       </form>

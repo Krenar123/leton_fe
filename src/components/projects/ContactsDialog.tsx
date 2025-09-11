@@ -11,8 +11,12 @@ import { CreateContactDialog } from "./contacts/CreateContactDialog";
 import { EditContactDialog } from "./contacts/EditContactDialog";
 import { Contact, ContactFilters, ContactSortField, ContactSortDirection } from "./contacts/types";
 import { Dialog } from "@/components/ui/dialog";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { fetchProjectContacts, createProjectContact, updateProjectContact, deleteProjectContact } from "@/services/api";
+import { useToast } from "@/hooks/use-toast";
 interface ContactsDialogProps {
   projectName: string;
+  projectRef: string;
   onClose: () => void;
 }
 interface ColumnVisibility {
@@ -54,9 +58,36 @@ const mockContacts: Contact[] = [{
 }];
 export const ContactsDialog = ({
   projectName,
+  projectRef,
   onClose
 }: ContactsDialogProps) => {
-  const [contacts, setContacts] = useState<Contact[]>(mockContacts);
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+  
+  // Fetch contacts from API
+  const { data: contactsData, isLoading } = useQuery({
+    queryKey: ["project-contacts", projectRef],
+    queryFn: () => fetchProjectContacts(projectRef),
+    enabled: !!projectRef,
+    retry: false,
+  });
+
+  // Transform API data to Contact format
+  const contacts: Contact[] = contactsData?.data?.map((item: any) => ({
+    id: parseInt(item.id),
+    name: item.attributes?.name || "",
+    company: item.attributes?.company || "",
+    vendor_ref: item.attributes?.vendor_ref || "",
+    company_name_override: item.attributes?.company_name_override || "",
+    sector: item.attributes?.sector || "",
+    unit: item.attributes?.unit || "",
+    role: item.attributes?.role || "",
+    address: item.attributes?.address || "",
+    phones: item.attributes?.phones || [],
+    emails: item.attributes?.emails || [],
+    createdAt: item.attributes?.created_at || new Date().toISOString(),
+    updatedAt: item.attributes?.updated_at || new Date().toISOString(),
+  })) || [];
   const [searchTerm, setSearchTerm] = useState("");
   const [filters, setFilters] = useState<ContactFilters>({
     company: "",
@@ -111,26 +142,56 @@ export const ContactsDialog = ({
       setSortDirection('asc');
     }
   };
-  const handleCreateContact = (contactData: Omit<Contact, 'id' | 'createdAt' | 'updatedAt'>) => {
-    const newContact: Contact = {
-      ...contactData,
-      id: Math.max(...contacts.map(c => c.id)) + 1,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString()
-    };
-    setContacts([...contacts, newContact]);
-    setIsCreateDialogOpen(false);
+  const handleCreateContact = async (contactData: Omit<Contact, 'id' | 'createdAt' | 'updatedAt'>) => {
+    try {
+      await createProjectContact(projectRef, contactData);
+      queryClient.invalidateQueries({ queryKey: ["project-contacts", projectRef] });
+      toast({
+        title: "Success",
+        description: "Contact created successfully",
+      });
+      setIsCreateDialogOpen(false);
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to create contact",
+        variant: "destructive",
+      });
+    }
   };
-  const handleEditContact = (contactData: Contact) => {
-    setContacts(contacts.map(c => c.id === contactData.id ? {
-      ...contactData,
-      updatedAt: new Date().toISOString()
-    } : c));
-    setIsEditDialogOpen(false);
-    setSelectedContact(null);
+  const handleEditContact = async (contactData: Contact) => {
+    try {
+      await updateProjectContact(projectRef, contactData.id.toString(), contactData);
+      queryClient.invalidateQueries({ queryKey: ["project-contacts", projectRef] });
+      toast({
+        title: "Success",
+        description: "Contact updated successfully",
+      });
+      setIsEditDialogOpen(false);
+      setSelectedContact(null);
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to update contact",
+        variant: "destructive",
+      });
+    }
   };
-  const handleDeleteContact = (contactId: number) => {
-    setContacts(contacts.filter(c => c.id !== contactId));
+  const handleDeleteContact = async (contactId: number) => {
+    try {
+      await deleteProjectContact(projectRef, contactId.toString());
+      queryClient.invalidateQueries({ queryKey: ["project-contacts", projectRef] });
+      toast({
+        title: "Success",
+        description: "Contact deleted successfully",
+      });
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to delete contact",
+        variant: "destructive",
+      });
+    }
   };
   const handleCopyContact = (contact: Contact) => {
     const copiedContact: Contact = {
@@ -140,7 +201,11 @@ export const ContactsDialog = ({
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString()
     };
-    setContacts([...contacts, copiedContact]);
+    // TODO: Implement copy contact functionality with API call For now, just show a toast message
+    toast({
+      title: "Contact Copy",
+      description: "Copy functionality will be implemented with API integration",
+    });
   };
   const handleEditClick = (contact: Contact) => {
     setSelectedContact(contact);

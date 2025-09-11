@@ -7,6 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Plus, X } from "lucide-react";
 import { Contact } from "./types";
+import { VendorCombobox } from "@/components/common/VendorCombobox";
 
 interface EditContactDialogProps {
   contact: Contact;
@@ -18,6 +19,8 @@ export const EditContactDialog = ({ contact, onSubmit, onClose }: EditContactDia
   const [formData, setFormData] = useState({
     name: contact.name,
     company: contact.company,
+    vendor_ref: contact.vendor_ref || "",
+    company_name_override: contact.company_name_override || "",
     sector: contact.sector || "",
     unit: contact.unit || "",
     role: contact.role || "",
@@ -36,7 +39,8 @@ export const EditContactDialog = ({ contact, onSubmit, onClose }: EditContactDia
       emails: formData.emails.filter(email => email.trim() !== "")
     };
 
-    if (updatedContact.name && updatedContact.company && updatedContact.emails.length > 0) {
+    const hasCompany = updatedContact.vendor_ref || updatedContact.company_name_override;
+    if (updatedContact.name && hasCompany && updatedContact.emails.length > 0) {
       onSubmit(updatedContact);
     }
   };
@@ -95,15 +99,35 @@ export const EditContactDialog = ({ contact, onSubmit, onClose }: EditContactDia
               />
             </div>
             <div>
-              <Label htmlFor="company">Company *</Label>
-              <Input
-                id="company"
+              <Label htmlFor="vendor">Vendor/Company *</Label>
+              <VendorCombobox
                 value={formData.company}
-                onChange={(e) => setFormData({ ...formData, company: e.target.value })}
-                required
+                onChange={(value) => setFormData({
+                  ...formData,
+                  company: value,
+                  vendor_ref: value ? value : "",
+                  company_name_override: value ? "" : formData.company_name_override
+                })}
+                placeholder="Select or type vendor name..."
               />
             </div>
           </div>
+
+          {!formData.vendor_ref && (
+            <div>
+              <Label htmlFor="company_name_override">Company Name Override</Label>
+              <Input 
+                id="company_name_override" 
+                value={formData.company_name_override} 
+                onChange={e => setFormData({
+                  ...formData,
+                  company_name_override: e.target.value,
+                  company: e.target.value
+                })} 
+                placeholder="Enter company name if not in vendor list"
+              />
+            </div>
+          )}
 
           <div className="grid grid-cols-3 gap-4">
             <div>

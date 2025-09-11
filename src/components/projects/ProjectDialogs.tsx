@@ -38,6 +38,7 @@ export const ProjectDialogs = ({
     <>
       <Dialog open={isBackstopsDialogOpen} onOpenChange={setIsBackstopsDialogOpen}>
         <BackstopsDialog 
+          projectRef={project.ref}
           projectName={project.name}
           onClose={() => setIsBackstopsDialogOpen(false)}
         />
@@ -53,6 +54,7 @@ export const ProjectDialogs = ({
 
       <Dialog open={isNotesDialogOpen} onOpenChange={setIsNotesDialogOpen}>
         <NotesDialog 
+          projectRef={project.ref}
           projectName={project.name}
           onClose={() => setIsNotesDialogOpen(false)}
         />
@@ -60,6 +62,7 @@ export const ProjectDialogs = ({
 
       <Dialog open={isDocumentsDialogOpen} onOpenChange={setIsDocumentsDialogOpen}>
         <DocumentsDialog 
+          projectRef={project.ref}
           projectName={project.name}
           onClose={() => setIsDocumentsDialogOpen(false)}
         />
@@ -68,6 +71,7 @@ export const ProjectDialogs = ({
       <Dialog open={isContactsDialogOpen} onOpenChange={setIsContactsDialogOpen}>
         <ContactsDialog 
           projectName={project.name}
+          projectRef={project.ref}
           onClose={() => setIsContactsDialogOpen(false)}
         />
       </Dialog>

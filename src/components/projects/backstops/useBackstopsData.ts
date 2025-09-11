@@ -1,112 +1,58 @@
 
 import { useState } from "react";
-import { Backstop, AddBackstopData } from "./types";
+import { useQuery } from "@tanstack/react-query";
+import { Backstop } from "./types";
+import { fetchProjectBackstops, deleteBackstop as deleteBackstopApi } from "@/services/api";
+import { useToast } from "@/hooks/use-toast";
 
-const initialMockBackstops: Backstop[] = [
-  {
-    id: 1,
-    what: "Task Due Date",
-    where: "Phase 1 - Foundation",
-    backstopValue: "2025-08-15",
-    status: "On Track",
-    type: "task_due",
-    isReached: false,
-    severity: "medium",
-    dateCreated: "2025-07-15",
-    isAutomatic: true
-  },
-  {
-    id: 2,
-    what: "Item Line Cost",
-    where: "Electrical Installation",
-    backstopValue: "$3,500",
-    status: "$3,200 (91%)",
-    currentValue: "$3,200",
-    type: "item_expense",
-    isReached: false,
-    severity: "medium",
-    dateCreated: "2025-07-20",
-    isAutomatic: false
-  },
-  {
-    id: 3,
-    what: "Project Profitability",
-    where: "Overall Project",
-    backstopValue: "15%",
-    status: "18.5%",
-    currentValue: "18.5%",
-    type: "job_profitability",
-    isReached: false,
-    severity: "low",
-    dateCreated: "2025-07-25",
-    isAutomatic: false
-  },
-  {
-    id: 4,
-    what: "Projected Cash Flow",
-    where: "September 2025",
-    backstopValue: "50%",
-    status: "65%",
-    currentValue: "65%",
-    type: "cashflow",
-    isReached: true,
-    severity: "high",
-    dateCreated: "2025-07-30",
-    isAutomatic: false
-  }
-];
+export const useBackstopsData = (projectRef: string) => {
+  const { toast } = useToast();
 
-export const useBackstopsData = () => {
-  const [backstops, setBackstops] = useState<Backstop[]>(initialMockBackstops);
+  const { data: backstopsData, isLoading, refetch } = useQuery({
+    queryKey: ["backstops", projectRef],
+    queryFn: () => fetchProjectBackstops(projectRef),
+    enabled: !!projectRef,
+  });
 
-  const getWhatFromField = (field: string, type: string) => {
-    if (field === "item_line") return "Item Line Cost";
-    if (field === "project_profit") return "Project Profitability";
-    if (field === "projected_cashflow") return "Projected Cash Flow";
-    return "Custom Backstop";
-  };
+  const backstops: Backstop[] = backstopsData?.data?.map((entry: any) => ({
+    id: entry.id,
+    what: getBackstopWhat(entry.attributes),
+    where: getBackstopWhere(entry.attributes),
+    backstopValue: formatBackstopValue(entry.attributes),
+    status: entry.attributes.is_reached ? "Reached" : "Monitoring",
+    currentValue: entry.attributes.current_value,
+    type: mapBackstopType(entry.attributes.scope_type, entry.attributes.threshold_type),
+    isReached: entry.attributes.is_reached,
+    severity: entry.attributes.severity || "medium",
+    dateCreated: entry.attributes.created_at?.split('T')[0] || new Date().toISOString().split('T')[0],
+    isAutomatic: entry.attributes.is_automatic || false,
+  })) || [];
 
-  const getWhereFromField = (field: string) => {
-    if (field === "project_profit") return "Overall Project";
-    if (field === "projected_cashflow") return "Project Cash Flow";
-    return "Project";
-  };
-
-  const formatThreshold = (threshold: number, type: string) => {
-    if (type === "outflow_ratio" || type === "profitability") return `${threshold}%`;
-    return `$${threshold.toLocaleString()}`;
-  };
-
-  const getBackstopType = (field: string): Backstop["type"] => {
-    if (field === "item_line") return "item_expense";
-    if (field === "project_profit") return "job_profitability";
-    if (field === "projected_cashflow") return "cashflow";
-    return "individual";
-  };
-
-  const handleAddBackstop = (backstopData: AddBackstopData) => {
-    const newBackstop: Backstop = {
-      id: Math.max(...backstops.map(b => b.id)) + 1,
-      what: getWhatFromField(backstopData.field, backstopData.type),
-      where: backstopData.itemLine || getWhereFromField(backstopData.field),
-      backstopValue: formatThreshold(backstopData.threshold, backstopData.type),
-      status: "Monitoring",
-      type: getBackstopType(backstopData.field),
-      isReached: false,
-      severity: "medium",
-      dateCreated: new Date().toISOString().split('T')[0],
-      isAutomatic: false
-    };
-
-    setBackstops([...backstops, newBackstop]);
-  };
-
-  const handleDeleteBackstop = (id: number) => {
+  const handleDeleteBackstop = async (id: number) => {
     const backstop = backstops.find(b => b.id === id);
     if (backstop?.isAutomatic) {
+      toast({
+        title: "Cannot Delete",
+        description: "Automatic backstops cannot be deleted",
+        variant: "destructive",
+      });
       return;
     }
-    setBackstops(backstops.filter(b => b.id !== id));
+
+    try {
+      await deleteBackstopApi(projectRef, id.toString());
+      toast({
+        title: "Success",
+        description: "Backstop deleted successfully",
+      });
+      refetch();
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to delete backstop",
+        variant: "destructive",
+      });
+    }
   };
 
   const totalBackstops = backstops.length;
@@ -116,7 +62,42 @@ export const useBackstopsData = () => {
     backstops,
     totalBackstops,
     reachedBackstops,
-    handleAddBackstop,
-    handleDeleteBackstop
+    handleDeleteBackstop,
+    refetchBackstops: refetch,
+    isLoading,
   };
 };
+
+// Helper functions to format backstop data from API
+function getBackstopWhat(attributes: any): string {
+  if (attributes.scope_type === "item_line") return "Item Line Amount";
+  if (attributes.scope_type === "objective") return "Objective Due Date";
+  if (attributes.scope_type === "task") return "Task Due Date";
+  if (attributes.scope_type === "project_profit") return "Project Profitability";
+  if (attributes.scope_type === "projected_cashflow") return "Projected Cash Flow";
+  return "Backstop";
+}
+
+function getBackstopWhere(attributes: any): string {
+  return attributes.scope_name || attributes.scope_ref || "Unknown Scope";
+}
+
+function formatBackstopValue(attributes: any): string {
+  if (attributes.threshold_type === "amount") {
+    return `$${(attributes.threshold_value_cents / 100).toLocaleString()}`;
+  } else if (attributes.threshold_type === "date") {
+    return attributes.threshold_date;
+  } else if (attributes.threshold_type === "percentage") {
+    return `${attributes.threshold_value}%`;
+  }
+  return "Unknown";
+}
+
+function mapBackstopType(scopeType: string, thresholdType: string): Backstop["type"] {
+  if (scopeType === "item_line") return "item_expense";
+  if (scopeType === "objective") return "task_due";
+  if (scopeType === "task") return "task_due";
+  if (scopeType === "project_profit") return "job_profitability";
+  if (scopeType === "projected_cashflow") return "cashflow";
+  return "individual";
+}
