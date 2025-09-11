@@ -5,6 +5,7 @@ import {
   updateProjectMeeting,
   deleteProjectMeeting,
 } from "@/services/api";
+import { Meeting } from "@/types/project";
 
 export const useProjectMeetings = (projectRef: string) => {
   const qc = useQueryClient();
@@ -16,29 +17,26 @@ export const useProjectMeetings = (projectRef: string) => {
     queryFn: () => fetchProjectMeetings(projectRef),
     enabled: !!projectRef,
     select: (resp) => {
-      // Expect JSON:API-ish or flat; normalize to your MeetingsDialog shape
-      // Map BE -> FE (robust to snake_case/camelCase)
-      const arr = Array.isArray(resp?.data) ? resp.data : [];
-
-      console.log("woow");
-      console.log(arr);
+      // Expect JSON:API-ish or flat; normalize to Meeting type
+      const arr = Array.isArray(resp?.data) ? resp.data : (Array.isArray(resp) ? resp : []);
       
-      return arr.map((e: any) => {
+      return arr.map((e: any): Meeting => {
         const a = e.attributes ?? e; // if not JSON:API
-        // Preferred single datetime from BE (meeting_at) -> split to day/time
-        const mAt = a.meeting_at ?? a.meetingAt ?? null;
-        const d = mAt ? new Date(mAt) : null;
-        const day = a.day ?? (d ? d.toISOString().slice(0, 10) : "");
-        const time = a.time ?? (d ? d.toISOString().slice(11, 16) : "");
 
         return {
-          id: e.id ?? a.ref ?? a.id,
-          title: a.title ?? a.topic ?? "Untitled",
-          withWho: a.with_who ?? a.withWho ?? a.clientName ?? "—",
-          ourPerson: a.our_person ?? a.ourPerson ?? a.userName ?? "—",
-          day,
-          time,
-          location: a.location ?? a.link ?? "—",
+          id: e.id ?? a.ref ?? a.id ?? "",
+          ref: e.ref ?? a.ref ?? e.id ?? "",
+          title: a.title ?? "Untitled",
+          start_at: a.start_at ?? a.startAt ?? "",
+          end_at: a.end_at ?? a.endAt ?? "",
+          location: a.location ?? "",
+          agenda: a.agenda ?? "",
+          notes: a.notes ?? "",
+          client_ref: a.client_ref ?? a.clientRef ?? "",
+          client_attendees_text: a.client_attendees_text ?? a.clientAttendeesText ?? "",
+          attendee_user_refs: a.attendee_user_refs ?? a.attendeeUserRefs ?? [],
+          created_at: a.created_at ?? a.createdAt ?? "",
+          updated_at: a.updated_at ?? a.updatedAt ?? "",
         };
       });
     },

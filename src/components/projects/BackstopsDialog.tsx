@@ -11,13 +11,13 @@ import { BackstopsFilter } from "./backstops/BackstopsFilter";
 import { BackstopsTable } from "./backstops/BackstopsTable";
 import { BackstopsDialogProps } from "./backstops/types";
 
-export const BackstopsDialog = ({ projectName, onClose }: BackstopsDialogProps) => {
+export const BackstopsDialog = ({ projectRef, projectName, onClose }: BackstopsDialogProps) => {
   const [statusFilter, setStatusFilter] = useState<"all" | "reached">("all");
   const [typeFilter, setTypeFilter] = useState<string>("all");
   const [searchTerm, setSearchTerm] = useState("");
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   
-  const { backstops, totalBackstops, reachedBackstops, handleAddBackstop, handleDeleteBackstop } = useBackstopsData();
+  const { backstops, totalBackstops, reachedBackstops, handleDeleteBackstop, refetchBackstops } = useBackstopsData(projectRef);
   
   const filteredBackstops = backstops.filter(backstop => {
     const matchesStatusFilter = statusFilter === "all" || (statusFilter === "reached" && backstop.isReached);
@@ -87,8 +87,12 @@ export const BackstopsDialog = ({ projectName, onClose }: BackstopsDialogProps) 
 
       <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
         <AddBackstopDialog
+          projectRef={projectRef}
           onClose={() => setIsAddDialogOpen(false)}
-          onAdd={handleAddBackstop}
+          onSuccess={() => {
+            refetchBackstops();
+            setIsAddDialogOpen(false);
+          }}
         />
       </Dialog>
     </>
