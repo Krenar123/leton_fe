@@ -14,6 +14,7 @@ export interface Backstop {
 }
 
 export interface BackstopsDialogProps {
+  projectRef: string;
   projectName: string;
   onClose: () => void;
 }

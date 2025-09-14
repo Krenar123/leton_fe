@@ -338,7 +338,57 @@ export async function deleteProjectMeeting(projectRef: string, meetingRef: strin
   return true;
 }
 
+// Project Contact-related APIs
+export async function fetchProjectContacts(projectRef: string) {
+  return fetchFromApi(`/projects/${projectRef}/contacts`);
+}
 
+export async function createProjectContact(projectRef: string, contactData: any) {
+  const response = await fetch(`${API_BASE_URL}/projects/${projectRef}/contacts`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({ contact: contactData })
+  });
+
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.errors?.join(", ") || "Failed to create contact");
+  }
+
+  return response.json();
+}
+
+export async function updateProjectContact(projectRef: string, contactRef: string, contactData: any) {
+  const response = await fetch(`${API_BASE_URL}/projects/${projectRef}/contacts/${contactRef}`, {
+    method: "PATCH",
+    headers: {
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({ contact: contactData })
+  });
+
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.errors?.join(", ") || "Failed to update contact");
+  }
+
+  return response.json();
+}
+
+export async function deleteProjectContact(projectRef: string, contactRef: string) {
+  const response = await fetch(`${API_BASE_URL}/projects/${projectRef}/contacts/${contactRef}`, {
+    method: "DELETE"
+  });
+
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.errors?.join(", ") || "Failed to delete contact");
+  }
+
+  return response.json();
+}
 
 // --------------------
 // Client-related APIs
@@ -558,6 +608,52 @@ export async function fetchUserNotes(userRef: string) {
   return fetchFromApi(`/users/${userRef}/notes`);
 }
 
+// Project Notes APIs
+export async function fetchProjectNotes(projectRef: string) {
+  return fetchFromApi(`/projects/${projectRef}/notes`);
+}
+
+export async function createProjectNote(projectRef: string, noteData: any) {
+  const response = await fetch(`${API_BASE_URL}/projects/${projectRef}/notes`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ note: noteData })
+  });
+
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.message || "Failed to create project note");
+  }
+
+  return response.json();
+}
+
+export async function updateProjectNote(projectRef: string, noteRef: string, noteData: any) {
+  const response = await fetch(`${API_BASE_URL}/projects/${projectRef}/notes/${noteRef}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ note: noteData })
+  });
+
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.message || "Failed to update project note");
+  }
+
+  return response.json();
+}
+
+export async function deleteProjectNote(projectRef: string, noteRef: string) {
+  const response = await fetch(`${API_BASE_URL}/projects/${projectRef}/notes/${noteRef}`, {
+    method: "DELETE" 
+  });
+
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.message || "Failed to delete project note");
+  }
+}
+
 export async function createUser(userData: any) {
   const response = await fetch(`${API_BASE_URL}/users`, {
     method: "POST",
@@ -667,4 +763,82 @@ export async function updateSupplier(ref: string, data: any) {
 
 export async function fetchCashFlow() {
   return fetchFromApi("/cash_flow_entries");
+}
+
+// --------------------
+// Document-related APIs
+// --------------------
+
+export async function fetchProjectDocuments(projectRef: string) {
+  return fetchFromApi(`/projects/${projectRef}/documents`);
+}
+
+export async function uploadProjectDocument(projectRef: string, file: File) {
+  const formData = new FormData();
+  formData.append('document', file);
+
+  const response = await fetch(`${API_BASE_URL}/projects/${projectRef}/documents`, {
+    method: "POST",
+    body: formData
+  });
+
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.message || "Failed to upload document");
+  }
+
+  return response.json();
+}
+
+export async function deleteDocument(documentRef: string) {
+  const response = await fetch(`${API_BASE_URL}/documents/${documentRef}`, {
+    method: "DELETE"
+  });
+
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.message || "Failed to delete document");
+  }
+
+  return true;
+}
+
+// Backstop-related APIs
+export async function fetchProjectBackstops(projectRef: string) {
+  return fetchFromApi(`/projects/${projectRef}/backstops`);
+}
+
+export async function createBackstop(projectRef: string, backstopData: {
+  scope_type: "item_line" | "objective" | "task" | "project_profit" | "projected_cashflow";
+  scope_ref: string;
+  threshold_type: "amount" | "date" | "percentage";
+  threshold_value_cents?: number;
+  threshold_date?: string;
+  threshold_value?: number;
+}) {
+  const response = await fetch(`${API_BASE_URL}/projects/${projectRef}/backstops`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ backstop: backstopData }),
+  });
+
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.errors?.join(", ") || "Failed to create backstop");
+  }
+
+  return response.json();
+}
+
+export async function deleteBackstop(projectRef: string, backstopRef: string) {
+  const response = await fetch(`${API_BASE_URL}/projects/${projectRef}/backstops/${backstopRef}`, {
+    method: "DELETE"
+  });
+
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.message || "Failed to delete backstop");
+  }
+
+  return true;
 }
