@@ -21,12 +21,15 @@ export const useBackstopsData = (projectRef: string) => {
     backstopValue: formatBackstopValue(entry.attributes),
     status: entry.attributes.is_reached ? "Reached" : "Monitoring",
     currentValue: entry.attributes.current_value,
-    type: mapBackstopType(entry.attributes.scope_type, entry.attributes.threshold_type),
+    type: mapBackstopType(entry.attributes.scopeType, entry.attributes.thresholdType),
     isReached: entry.attributes.is_reached,
     severity: entry.attributes.severity || "medium",
     dateCreated: entry.attributes.created_at?.split('T')[0] || new Date().toISOString().split('T')[0],
     isAutomatic: entry.attributes.is_automatic || false,
   })) || [];
+
+  console.log("backstops");
+  console.log(backstopsData);
 
   const handleDeleteBackstop = async (id: number) => {
     const backstop = backstops.find(b => b.id === id);
@@ -70,25 +73,25 @@ export const useBackstopsData = (projectRef: string) => {
 
 // Helper functions to format backstop data from API
 function getBackstopWhat(attributes: any): string {
-  if (attributes.scope_type === "item_line") return "Item Line Amount";
-  if (attributes.scope_type === "objective") return "Objective Due Date";
-  if (attributes.scope_type === "task") return "Task Due Date";
-  if (attributes.scope_type === "project_profit") return "Project Profitability";
-  if (attributes.scope_type === "projected_cashflow") return "Projected Cash Flow";
+  if (attributes.scopeType === "item_line") return "Item Line Amount";
+  if (attributes.scopeType === "objective") return "Objective Due Date";
+  if (attributes.scopeType === "task") return "Task Due Date";
+  if (attributes.scopeType === "project_profit") return "Project Profitability";
+  if (attributes.scopeType === "projected_cashflow") return "Projected Cash Flow";
   return "Backstop";
 }
 
 function getBackstopWhere(attributes: any): string {
-  return attributes.scope_name || attributes.scope_ref || "Unknown Scope";
+  return attributes.scopeName || attributes.scopeRef || "Unknown Scope";
 }
 
 function formatBackstopValue(attributes: any): string {
-  if (attributes.threshold_type === "amount") {
-    return `$${(attributes.threshold_value_cents / 100).toLocaleString()}`;
-  } else if (attributes.threshold_type === "date") {
+  if (attributes.thresholdType === "amount") {
+    return `$${(attributes.thresholdValueCents / 100).toLocaleString()}`;
+  } else if (attributes.thresholdType === "date") {
     return attributes.threshold_date;
-  } else if (attributes.threshold_type === "percentage") {
-    return `${attributes.threshold_value}%`;
+  } else if (attributes.thresholdType === "percentage") {
+    return `${attributes.thresholdValue}%`;
   }
   return "Unknown";
 }

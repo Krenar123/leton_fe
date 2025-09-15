@@ -54,6 +54,7 @@ export const CreateMeetingDialog = ({
           fetchUsers(),
           fetchClients()
         ]);
+
         setUsers(Array.isArray(usersData) ? usersData : usersData?.data || []);
         setClients(Array.isArray(clientsData) ? clientsData : clientsData?.data || []);
       } catch (error) {
@@ -310,8 +311,8 @@ export const CreateMeetingDialog = ({
             <SelectContent>
               <SelectItem value="none">No client</SelectItem>
               {clients && clients.length > 0 && clients.map(client => (
-                <SelectItem key={client.ref} value={client.ref}>
-                  {client.name}
+                <SelectItem key={client.attributes.ref} value={client.attributes.ref}>
+                  {client.attributes.company}
                 </SelectItem>
               ))}
             </SelectContent>
@@ -332,14 +333,14 @@ export const CreateMeetingDialog = ({
           <Label>Our Meeting Attendees *</Label>
           <div className="max-h-32 overflow-y-auto border rounded-md p-2 space-y-2">
             {users && users.length > 0 && users.map(user => (
-              <div key={user.ref} className="flex items-center space-x-2">
+              <div key={user.attributes.ref} className="flex items-center space-x-2">
                 <Checkbox
-                  id={`user-${user.ref}`}
-                  checked={formData.attendee_user_refs.includes(user.ref)}
-                  onCheckedChange={checked => handleUserToggle(user.ref, checked as boolean)}
+                  id={`user-${user.attributes.ref}`}
+                  checked={formData.attendee_user_refs.includes(user.attributes.ref)}
+                  onCheckedChange={checked => handleUserToggle(user.attributes.ref, checked as boolean)}
                 />
                 <Label htmlFor={`user-${user.ref}`} className="text-sm">
-                  {user.first_name} {user.last_name}
+                  {user.attributes.fullName}
                 </Label>
               </div>
             ))}

@@ -16,6 +16,9 @@ export const BackstopsDialog = ({ isOpen, onClose }: BackstopsDialogProps) => {
   const { filteredBackstops, uniqueProjects } = useBackstopsData();
 
   const filteredData = filteredBackstops(searchTerm, statusFilter, typeFilter, projectFilter);
+  
+  console.log("filtered data");
+  console.log(filteredData);
   const hasActiveFilters = statusFilter !== "all" || typeFilter !== "all" || projectFilter !== "all";
 
   const handleClearFilters = () => {
