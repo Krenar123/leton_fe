@@ -114,11 +114,12 @@ export const useTeamMemberData = (userRef: string) => {
     return arr.map((e: any) => {
       const a = e.attributes || {};
       // map to your TeamMemberMeetings shape
+      const meetingDate = a.meeting_date ?? a.meetingDate ?? "";
       return {
         id: e.id,
         person: a.organizerName || "", // or other field you prefer
-        date: a.meetingDate,
-        time: a.meetingDate ? new Date(a.meetingDate).toISOString().slice(11,16) : "",
+        date: meetingDate,
+        time: meetingDate ? new Date(meetingDate).toISOString().slice(11,16) : "",
         title: a.title,
         location: a.location,
         status: a.status,

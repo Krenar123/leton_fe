@@ -17,6 +17,10 @@ const ProjectPage = () => {
   const {
     project,
     actionItems,
+    meetings,
+    documents,
+    notes,
+    contacts,
     handleProjectUpdate
   } = useProjectData(id || "");
   const {
@@ -83,7 +87,26 @@ const ProjectPage = () => {
       <ProjectDialogs project={project} isBackstopsDialogOpen={isBackstopsDialogOpen} setIsBackstopsDialogOpen={setIsBackstopsDialogOpen} isMeetingsDialogOpen={isMeetingsDialogOpen} setIsMeetingsDialogOpen={setIsMeetingsDialogOpen} isNotesDialogOpen={isNotesDialogOpen} setIsNotesDialogOpen={setIsNotesDialogOpen} isDocumentsDialogOpen={isDocumentsDialogOpen} setIsDocumentsDialogOpen={setIsDocumentsDialogOpen} isContactsDialogOpen={isContactsDialogOpen} setIsContactsDialogOpen={setIsContactsDialogOpen} />
 
       {/* Main Content Grid */}
-      <ProjectContent project={project} actionItems={actionItems} hasNewBackstops={hasNewBackstops} hasNewNotes={hasNewNotes} hasNewDocuments={hasNewDocuments} hasNewContacts={hasNewContacts} viewedNotes={viewedNotes} viewedDocuments={viewedDocuments} viewedContacts={viewedContacts} onBackstopsClick={handleBackstopsCardClick} onMeetingsClick={handleMeetingsCardClick} onNotesClick={handleNotesCardClick} onDocumentsClick={handleDocumentsCardClick} onContactsClick={handleContactsCardClick} />
+      <ProjectContent 
+        project={project} 
+        actionItems={actionItems} 
+        meetings={meetings}
+        documents={documents}
+        notes={notes}
+        contacts={contacts}
+        hasNewBackstops={hasNewBackstops} 
+        hasNewNotes={hasNewNotes} 
+        hasNewDocuments={hasNewDocuments} 
+        hasNewContacts={hasNewContacts} 
+        viewedNotes={viewedNotes} 
+        viewedDocuments={viewedDocuments} 
+        viewedContacts={viewedContacts} 
+        onBackstopsClick={handleBackstopsCardClick} 
+        onMeetingsClick={handleMeetingsCardClick} 
+        onNotesClick={handleNotesCardClick} 
+        onDocumentsClick={handleDocumentsCardClick} 
+        onContactsClick={handleContactsCardClick} 
+      />
     </div>;
 };
 export default ProjectPage;
