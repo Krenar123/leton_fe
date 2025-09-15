@@ -1,21 +1,7 @@
 
 import { Card } from "@/components/ui/card";
 import { DollarSign, CreditCard, FileText } from "lucide-react";
-
-interface Project {
-  id: number;
-  name: string;
-  client: string;
-  location: string;
-  start: string;
-  due: string;
-  value: number;
-  profitability: number;
-  status: "Active" | "Completed";
-  description?: string;
-  openBillsOutstanding: number;
-  openInvoicesOutstanding: number;
-}
+import { Project } from "@/types/project";
 
 interface FinancialsCardProps {
   project: Project;
@@ -37,6 +23,10 @@ export const FinancialsCard = ({ project, onClick }: FinancialsCardProps) => {
   const fmt = (n: number) =>
     new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", minimumFractionDigits: 0 }).format(n || 0);
 
+  // Map the project data to the expected format
+  const projectValue = project.budget || 0;
+  const projectStatus = project.status || 'planning';
+
   return (
     <Card
       className="p-6 bg-gradient-to-br from-slate-700 to-slate-800 text-white cursor-pointer hover:from-slate-600 hover:to-slate-700 transition-all"
@@ -50,7 +40,7 @@ export const FinancialsCard = ({ project, onClick }: FinancialsCardProps) => {
       <div className="space-y-4">
         <div className="flex justify-between items-center">
           <span className="text-slate-300">Project Value</span>
-          <span className="font-bold text-lg">{fmt(project.value)}</span>
+          <span className="font-bold text-lg">{fmt(projectValue)}</span>
         </div>
 
         <div className="flex justify-between items-center">
@@ -60,8 +50,8 @@ export const FinancialsCard = ({ project, onClick }: FinancialsCardProps) => {
 
         <div className="flex justify-between items-center">
           <span className="text-slate-300">Status</span>
-          <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${statusBadge(project.status)}`}>
-            {project.status.charAt(0).toUpperCase() + project.status.slice(1)}
+          <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${statusBadge(projectStatus)}`}>
+            {projectStatus.charAt(0).toUpperCase() + projectStatus.slice(1)}
           </span>
         </div>
 

@@ -6,8 +6,11 @@ import { Badge } from "@/components/ui/badge";
 interface MiddleColumnCardsProps {
   hasNewBackstops: boolean;
   reachedBackstops: number;
+  upcomingMeetings: any[];
   hasNewNotes: boolean;
   viewedNotes: boolean;
+  newNotesCount: number;
+  totalNotesCount: number;
   hasNewDocuments: boolean;
   viewedDocuments: boolean;
   newDocumentsCount: number;
@@ -26,8 +29,11 @@ interface MiddleColumnCardsProps {
 export const MiddleColumnCards = ({
   hasNewBackstops,
   reachedBackstops,
+  upcomingMeetings,
   hasNewNotes,
   viewedNotes,
+  newNotesCount,
+  totalNotesCount,
   hasNewDocuments,
   viewedDocuments,
   newDocumentsCount,
@@ -71,14 +77,38 @@ export const MiddleColumnCards = ({
             <div className="flex-1">
               <h4 className="font-medium text-slate-800">Meetings</h4>
               <div className="space-y-1">
-                <div className="flex items-center justify-between text-sm text-slate-700">
-                  <span>Client Review</span>
-                  <span>Today 14:00</span>
-                </div>
-                <div className="flex items-center justify-between text-sm text-slate-700">
-                  <span>Team Standup</span>
-                  <span>Tomorrow 09:00</span>
-                </div>
+                {upcomingMeetings.length > 0 ? (
+                  upcomingMeetings.map((meeting, index) => {
+                    const startDate = new Date(meeting.start_at);
+                    const endDate = new Date(meeting.end_at);
+                    const isToday = startDate.toDateString() === new Date().toDateString();
+                    const isTomorrow = startDate.toDateString() === new Date(Date.now() + 86400000).toDateString();
+                    
+                    const startTime = startDate.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+                    const endTime = endDate.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+                    
+                    let timeDisplay = '';
+                    if (isToday) {
+                      timeDisplay = `Today ${startTime} - ${endTime}`;
+                    } else if (isTomorrow) {
+                      timeDisplay = `Tomorrow ${startTime} - ${endTime}`;
+                    } else {
+                      timeDisplay = `${startDate.toLocaleDateString('en-US', { 
+                        month: 'short', 
+                        day: 'numeric'
+                      })} ${startTime} - ${endTime}`;
+                    }
+                    
+                    return (
+                      <div key={meeting.id || index} className="flex items-center justify-between text-sm text-slate-700">
+                        <span className="truncate">{meeting.title}</span>
+                        <span className="text-xs text-slate-500 ml-2">{timeDisplay}</span>
+                      </div>
+                    );
+                  })
+                ) : (
+                  <div className="text-sm text-slate-500">No upcoming meetings</div>
+                )}
               </div>
             </div>
           </div>
@@ -97,12 +127,12 @@ export const MiddleColumnCards = ({
             <PenTool className="w-5 h-5 text-slate-400" />
             <div>
               <h4 className="font-medium text-slate-800">Notes</h4>
-              <p className="text-sm text-slate-700">Recent updates</p>
+              <p className="text-sm text-slate-700">{totalNotesCount} notes</p>
             </div>
           </div>
-          {hasNewNotes && !viewedNotes && (
+          {hasNewNotes && !viewedNotes && newNotesCount > 0 && (
             <Badge variant="default" className="text-xs">
-              3 new
+              {newNotesCount} new
             </Badge>
           )}
         </div>

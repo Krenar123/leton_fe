@@ -8,6 +8,10 @@ import { Project, ActionItem } from "@/types/project";
 interface ProjectContentProps {
   project: Project;
   actionItems: ActionItem[];
+  meetings: any[];
+  documents: any[];
+  notes: any[];
+  contacts: any[];
   hasNewBackstops: boolean;
   hasNewNotes: boolean;
   hasNewDocuments: boolean;
@@ -25,6 +29,10 @@ interface ProjectContentProps {
 export const ProjectContent = ({
   project,
   actionItems,
+  meetings,
+  documents,
+  notes,
+  contacts,
   hasNewBackstops,
   hasNewNotes,
   hasNewDocuments,
@@ -48,14 +56,40 @@ export const ProjectContent = ({
     navigate(`/projects/${project.ref}/financials`);
   };
 
-  // Mock data
-  const completedObjectives = 2;
-  const totalObjectives = 5;
-  const reachedBackstops = 2;
-  const newDocumentsCount = 2;
-  const totalDocumentsCount = 12;
-  const newContactsCount = 2;
-  const totalContactsCount = 8;
+  // Calculate dynamic data
+  const completedObjectives = actionItems.filter(item => item.completed).length;
+  const totalObjectives = actionItems.length;
+  
+  // Calculate backstops (objectives that are overdue or at risk)
+  const now = new Date();
+  const reachedBackstops = actionItems.filter(item => {
+    const endDate = new Date(item.endDate);
+    const isOverdue = endDate < now && !item.completed;
+    // For ActionItem, we don't have priority, so we'll use a simple overdue check
+    return isOverdue;
+  }).length;
+
+  // Calculate documents data
+  const newDocumentsCount = documents.filter(doc => doc.is_new).length;
+  const totalDocumentsCount = documents.length;
+
+  // Calculate notes data - consider notes created in last 24 hours as "new"
+  const twentyFourHoursAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+  const newNotesCount = notes.filter(note => {
+    const noteDate = new Date(note.created_at);
+    return noteDate > twentyFourHoursAgo;
+  }).length;
+  const totalNotesCount = notes.length;
+
+  // Calculate contacts data
+  const newContactsCount = contacts.filter(contact => contact.is_new).length;
+  const totalContactsCount = contacts.length;
+
+  // Get upcoming meetings (next 2 meetings)
+  const upcomingMeetings = meetings
+    .filter(meeting => new Date(meeting.start_at) >= now)
+    .sort((a, b) => new Date(a.start_at).getTime() - new Date(b.start_at).getTime())
+    .slice(0, 2);
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -71,8 +105,11 @@ export const ProjectContent = ({
       <MiddleColumnCards
         hasNewBackstops={hasNewBackstops}
         reachedBackstops={reachedBackstops}
+        upcomingMeetings={upcomingMeetings}
         hasNewNotes={hasNewNotes}
         viewedNotes={viewedNotes}
+        newNotesCount={newNotesCount}
+        totalNotesCount={totalNotesCount}
         hasNewDocuments={hasNewDocuments}
         viewedDocuments={viewedDocuments}
         newDocumentsCount={newDocumentsCount}
@@ -90,7 +127,7 @@ export const ProjectContent = ({
 
       {/* Financials (Right Column) */}
       <FinancialsCard
-        project={project}
+        project={project as any}
         onClick={handleFinancialsClick}
       />
     </div>

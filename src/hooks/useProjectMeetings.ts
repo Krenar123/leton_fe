@@ -23,12 +23,26 @@ export const useProjectMeetings = (projectRef: string) => {
       return arr.map((e: any): Meeting => {
         const a = e.attributes ?? e; // if not JSON:API
 
+        // Handle date mapping from database schema
+        const meetingDate = a.meeting_date ?? a.meetingDate ?? "";
+        const durationMinutes = a.duration_minutes ?? a.durationMinutes ?? 60;
+        
+        let start_at = "";
+        let end_at = "";
+        
+        if (meetingDate) {
+          const startDate = new Date(meetingDate);
+          const endDate = new Date(startDate.getTime() + (durationMinutes * 60 * 1000));
+          start_at = startDate.toISOString();
+          end_at = endDate.toISOString();
+        }
+
         return {
           id: e.id ?? a.ref ?? a.id ?? "",
           ref: e.ref ?? a.ref ?? e.id ?? "",
           title: a.title ?? "Untitled",
-          start_at: a.start_at ?? a.startAt ?? "",
-          end_at: a.end_at ?? a.endAt ?? "",
+          start_at: a.start_at ?? a.startAt ?? start_at,
+          end_at: a.end_at ?? a.endAt ?? end_at,
           location: a.location ?? "",
           agenda: a.agenda ?? "",
           notes: a.notes ?? "",

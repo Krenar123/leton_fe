@@ -71,11 +71,11 @@ export const CreateMeetingDialog = ({
     }
     
     if (!formData.start_at) {
-      errors.push("Start date and time is required");
+      errors.push("Meeting date and start time is required");
     }
     
     if (!formData.end_at) {
-      errors.push("End date and time is required");
+      errors.push("End time is required");
     }
     
     if (formData.start_at && formData.end_at) {
@@ -163,6 +163,13 @@ export const CreateMeetingDialog = ({
     if (date) {
       const dateTime = new Date(`${date}T${time}:00`).toISOString();
       handleChange(field, dateTime);
+      
+      // If we're changing the start date, also update the end date to match
+      if (field === 'start_at') {
+        const endTime = getDateTimeFromISO(formData.end_at || "").time || "10:00";
+        const endDateTime = new Date(`${date}T${endTime}:00`).toISOString();
+        handleChange("end_at", endDateTime);
+      }
     }
   };
 
@@ -172,6 +179,17 @@ export const CreateMeetingDialog = ({
     if (time) {
       const dateTime = new Date(`${date}T${time}:00`).toISOString();
       handleChange(field, dateTime);
+    }
+  };
+
+  const handleEndTimeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const time = e.target.value;
+    // Use the same date as the start date for the end time
+    const startDate = getDateTimeFromISO(formData.start_at || "");
+    const date = startDate.date || new Date().toISOString().slice(0, 10);
+    if (time) {
+      const dateTime = new Date(`${date}T${time}:00`).toISOString();
+      handleChange("end_at", dateTime);
     }
   };
 
@@ -217,18 +235,19 @@ export const CreateMeetingDialog = ({
           />
         </div>
 
-        <div className="grid grid-cols-2 gap-4">
         <div className="space-y-2">
-            <Label htmlFor="start_date">Start Date *</Label>
-            <Input 
-              id="start_date" 
-              type="date" 
-              value={startDateTime.date} 
-              onChange={e => handleDateChange("start_at", e.target.value)} 
-              required 
-            />
+          <Label htmlFor="meeting_date">Meeting Date *</Label>
+          <Input 
+            id="meeting_date" 
+            type="date" 
+            value={startDateTime.date} 
+            onChange={e => handleDateChange("start_at", e.target.value)} 
+            required 
+          />
         </div>
-        <div className="space-y-2">
+
+        <div className="grid grid-cols-2 gap-4">
+          <div className="space-y-2">
             <Label htmlFor="start_time">Start Time *</Label>
             <Input 
               id="start_time" 
@@ -238,26 +257,13 @@ export const CreateMeetingDialog = ({
               required 
             />
           </div>
-        </div>
-
-        <div className="grid grid-cols-2 gap-4">
-          <div className="space-y-2">
-            <Label htmlFor="end_date">End Date *</Label>
-            <Input 
-              id="end_date" 
-              type="date" 
-              value={endDateTime.date} 
-              onChange={e => handleDateChange("end_at", e.target.value)} 
-              required 
-            />
-          </div>
           <div className="space-y-2">
             <Label htmlFor="end_time">End Time *</Label>
             <Input 
               id="end_time" 
               type="time" 
               value={endDateTime.time} 
-              onChange={e => handleTimeChange("end_at", e.target.value)} 
+              onChange={e => handleEndTimeChange} 
               required 
             />
           </div>
